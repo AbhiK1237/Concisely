@@ -15,10 +15,10 @@ const ContentSourceInput = () => {
 
   const handleSubmit = async () => {
     if (!url) return;
-    
+
     setIsProcessing(true);
     setResult(null);
-    
+
     try {
       // This would connect to your backend API
       const response = await fetch(`/api/summarize/${activeTab}`, {
@@ -28,7 +28,7 @@ const ContentSourceInput = () => {
         },
         body: JSON.stringify({ url }),
       });
-      
+
       const data = await response.json();
       setResult(data);
     } catch (error) {
@@ -86,7 +86,7 @@ const ContentSourceInput = () => {
               <TabsTrigger value="podcast">Podcast</TabsTrigger>
               <TabsTrigger value="document">Document</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="article" className="space-y-4">
               <div>
                 <Label htmlFor="article-url">Article URL</Label>
@@ -98,9 +98,9 @@ const ContentSourceInput = () => {
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-grow"
                   />
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={isProcessing || !url} 
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !url}
                     className="ml-2"
                   >
                     {isProcessing ? (
@@ -112,7 +112,7 @@ const ContentSourceInput = () => {
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="youtube" className="space-y-4">
               <div>
                 <Label htmlFor="youtube-url">YouTube URL</Label>
@@ -124,9 +124,9 @@ const ContentSourceInput = () => {
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-grow"
                   />
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={isProcessing || !url} 
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !url}
                     className="ml-2"
                   >
                     {isProcessing ? (
@@ -138,7 +138,7 @@ const ContentSourceInput = () => {
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="podcast" className="space-y-4">
               <div>
                 <Label htmlFor="podcast-url">Podcast URL</Label>
@@ -150,9 +150,9 @@ const ContentSourceInput = () => {
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-grow"
                   />
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={isProcessing || !url} 
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !url}
                     className="ml-2"
                   >
                     {isProcessing ? (
@@ -164,7 +164,7 @@ const ContentSourceInput = () => {
                 </div>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="document" className="space-y-4">
               <div>
                 <Label htmlFor="document-url">Document URL or Upload</Label>
@@ -176,9 +176,9 @@ const ContentSourceInput = () => {
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-grow"
                   />
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={isProcessing || !url} 
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !url}
                     className="ml-2"
                   >
                     {isProcessing ? (
