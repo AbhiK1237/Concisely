@@ -11,3 +11,4 @@ export const extractTextFromPdf = async (filePath: string): Promise<string> => {
     throw new Error('Failed to extract text from PDF');
   }
 };
+

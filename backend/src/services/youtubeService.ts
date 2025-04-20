@@ -8,20 +8,19 @@ export const getVideoId = (url: string): string => {
   return (match && match[7].length === 11) ? match[7] : url;
 };
 
-// Get video info using YouTube oEmbed API (more reliable than ytdl-core)
+// Get video info using YouTube oEmbed API
 export const getVideoInfo = async (videoUrl: string) => {
   try {
     const videoId = getVideoId(videoUrl);
-    
+
     // Get basic info via oEmbed
     const oembedResponse = await axios.get(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-    
+
     return {
       id: videoId,
       title: oembedResponse.data.title,
       author: oembedResponse.data.author_name,
       thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      // Note: oEmbed doesn't provide duration, would need another API for that
     };
   } catch (error) {
     console.error('Error fetching video info:', error);
@@ -30,15 +29,27 @@ export const getVideoInfo = async (videoUrl: string) => {
 };
 
 // Get transcript using youtube-transcript library
-export const getTranscript = async (videoUrl: string): Promise<Array<{text: string, duration: number, offset: number}>> => {
+export const getTranscript = async (videoUrl: string): Promise<Array<{ text: string, duration: number, offset: number }>> => {
   try {
     const videoId = getVideoId(videoUrl);
+    console.log('Fetching transcript for video ID:', videoId); // Debug log
+
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-    
+
+    if (!transcript || transcript.length === 0) {
+      throw new Error('No transcript available for this video');
+    }
+
+    console.log('Transcript fetched successfully, segments:', transcript.length); // Debug log
     return transcript;
   } catch (error) {
     console.error('Error fetching transcript:', error);
-    throw new Error('Failed to get video transcript');
+
+    if (error instanceof Error) {
+      throw new Error(`Failed to get video transcript: ${error.message}`);
+    } else {
+      throw new Error('Failed to get video transcript: Unknown error');
+    }
   }
 };
 
@@ -46,9 +57,21 @@ export const getTranscript = async (videoUrl: string): Promise<Array<{text: stri
 export const getTranscriptText = async (videoUrl: string): Promise<string> => {
   try {
     const transcript = await getTranscript(videoUrl);
-    return transcript.map(item => item.text).join(' ');
+    const text = transcript.map(item => item.text).join(' ');
+
+    if (!text) {
+      throw new Error('Transcript is empty');
+    }
+
+    console.log('Transcript text length:', text.length); // Debug log
+    return text;
   } catch (error) {
     console.error('Error fetching transcript text:', error);
-    throw new Error('Failed to get video transcript text');
+
+    if (error instanceof Error) {
+      throw error; // Pass through the detailed error from getTranscript
+    } else {
+      throw new Error('Failed to get video transcript text');
+    }
   }
 };

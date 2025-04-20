@@ -102,3 +102,4 @@ export const generateNewsletter = async (
     throw new Error('Failed to generate newsletter');
   }
 };
+

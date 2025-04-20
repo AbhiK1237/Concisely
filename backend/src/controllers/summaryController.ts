@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Summary from '../models/Summary';
 import { generateSummary, extractTopics } from '../services/openaiService';
-import { getTranscript } from '../services/youtubeService';
+import { getTranscript, getTranscriptText } from '../services/youtubeService';
 import { scrapeArticle } from '../services/websiteService';
 import { extractTextFromPdf } from '../services/pdfService';
 import { apiResponse } from '../utils/apiResponse';
@@ -26,16 +26,16 @@ export const createYouTubeSummary = async (req: AuthRequest, res: Response): Pro
     }
 
     // Get the transcript from YouTube
-    const transcript = await getTranscript(videoUrl);
+    const transcript = await getTranscriptText(videoUrl);
 
     // Generate summary using OpenAI
-    const summary = await generateSummary(transcript[0].text, "youtube", "long");
+    const summary = await generateSummary(transcript, "youtube", "long");
 
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'YouTube Summary',
       summary: summary,
-      originalContent: transcript[0].text,
+      originalContent: transcript,
       sourceUrl: videoUrl,
       sourceType: 'youtube',
       userId: req.user._id,

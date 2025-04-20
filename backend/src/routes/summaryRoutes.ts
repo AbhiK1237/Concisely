@@ -16,7 +16,7 @@ const router = express.Router();
 // Protect all routes
 router.use(protect);
 
-// Create summaries
+// Create summaries - MUST be BEFORE /:id route
 router.post('/youtube', createYouTubeSummary);
 router.post('/website', createWebsiteSummary);
 router.post('/pdf', createPdfSummary);
@@ -25,7 +25,7 @@ router.post('/podcast', createPodcastSummary);
 // Get all summaries for a user
 router.get('/', getUserSummaries);
 
-// Get/delete a specific summary
+// Get/delete a specific summary - MUST be LAST
 router.route('/:id')
   .get(getSummaryById)
   .delete(deleteSummary);

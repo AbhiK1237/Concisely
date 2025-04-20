@@ -1,0 +1,21 @@
+2025-04-20 18:16:44:1644 [31merror[39m: [31mError creating YouTube summary: MongooseError: Operation `summaries.insertOne()` buffering timed out after 10000ms[39m
+2025-04-20 18:19:32:1932 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:20:25:2025 [31merror[39m: [31mError creating YouTube summary: MongooseError: Operation `summaries.insertOne()` buffering timed out after 10000ms[39m
+2025-04-20 18:22:07:227 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:25:15:2515 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:30:36:3036 [31merror[39m: [31mError fetching summary: CastError: Cast to ObjectId failed for value "youtube" (type string) at path "_id" for model "Summary"[39m
+2025-04-20 18:33:48:3348 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:33:49:3349 [31merror[39m: [31mError fetching summary: CastError: Cast to ObjectId failed for value "youtube" (type string) at path "_id" for model "Summary"[39m
+2025-04-20 18:35:54:3554 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:36:41:3641 [31merror[39m: [31mError creating YouTube summary: Error: Failed to get video transcript[39m
+2025-04-20 18:40:11:4011 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:40:28:4028 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:40:34:4034 [31merror[39m: [31mError creating YouTube summary: Error: Failed to get video transcript[39m
+2025-04-20 18:40:44:4044 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:40:53:4053 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:40:56:4056 [31merror[39m: [31mError creating YouTube summary: Error: Failed to get video transcript[39m
+2025-04-20 18:41:34:4134 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 18:41:36:4136 [31merror[39m: [31mError creating YouTube summary: Error: Failed to get video transcript: Cannot read properties of undefined (reading 'match')[39m
+2025-04-20 19:15:54:1554 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 19:19:00:190 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
+2025-04-20 19:19:22:1922 [31merror[39m: [31mEmail service error: connect ECONNREFUSED ::1:587[39m
