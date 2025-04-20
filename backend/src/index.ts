@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db';
-// import authRoutes from './routes/authRoutes';
+import authRoutes from './routes/authRoutes';
+import { initScheduler } from './services/newsletterScheduler';
 // import summaryRoutes from './routes/summaryRoutes';
 // import newsletterRoutes from './routes/newsletterRoutes';
-// import userRoutes from './routes/userRoutes';
+import userRoutes from './routes/userRoutes';
 // import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables
@@ -24,14 +25,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 // app.use('/api/summaries', summaryRoutes);
 // app.use('/api/newsletters', newsletterRoutes);
-// app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // // Error handling middleware
 // app.use(errorHandler);
-
+initScheduler();
 // // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

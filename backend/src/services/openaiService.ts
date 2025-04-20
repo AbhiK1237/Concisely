@@ -1,10 +1,16 @@
 import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
+import '../utils/loadEnv';
 
 dotenv.config();
 
+// console.log("🔑 API Key:", process.env.GEMINI_API_KEY);
+
+
+console.log("🔑 API Key");
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY ,
+  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
 });
 
 export const generateSummary = async (
@@ -15,7 +21,7 @@ export const generateSummary = async (
   try {
     let prompt: string;
     let contentLength: number;
-    
+
     switch (length) {
       case 'short':
         contentLength = 150;
@@ -27,7 +33,7 @@ export const generateSummary = async (
         contentLength = 300;
         break;
     }
-    
+
     switch (type) {
       case 'youtube':
         prompt = `Summarize this YouTube video transcript in approximately ${contentLength} words:\n\n${content}`;
@@ -44,8 +50,11 @@ export const generateSummary = async (
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
+      model: "gemini-2.0-flash",
+      messages: [
+        { role: "system", content: "You are a helpful assistant." },
+        { role: "user", content: prompt }
+      ],
     });
 
     return completion.choices[0].message.content || '';
@@ -69,5 +78,27 @@ export const extractTopics = async (content: string): Promise<string[]> => {
   } catch (error) {
     console.error('Error extracting topics:', error);
     throw new Error('Failed to extract topics');
+  }
+};
+export const generateNewsletter = async (
+  combinedContent: string,
+  topics: string[]
+): Promise<string> => {
+  try {
+    const topicsText = topics.join(", ");
+    const prompt = `Create a well-structured newsletter based on the following summaries. The newsletter should focus on these topics: ${topicsText}.\n\nContent to include:\n${combinedContent}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gemini-2.0-flash", // or whichever model you prefer to be consistent
+      messages: [
+        { role: "system", content: "You are a professional newsletter editor." },
+        { role: "user", content: prompt }
+      ],
+    });
+
+    return completion.choices[0].message.content || '';
+  } catch (error) {
+    console.error('Error generating newsletter:', error);
+    throw new Error('Failed to generate newsletter');
   }
 };
