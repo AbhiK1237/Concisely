@@ -2,41 +2,45 @@ import { Request, Response } from 'express';
 import Newsletter from '../models/Newsletter';
 import User from '../models/User';
 import Summary from '../models/Summary';
-import { openaiService } from '../services/openaiService';
+import { generateNewsletter } from '../services/openaiService';
 import { apiResponse } from '../utils/apiResponse';
 import { logger } from '../utils/logger';
+import mongoose from 'mongoose';
+// Add this method to your newsletterController.ts file
 
-// Create a new newsletter from summaries
-export const createNewsletter = async (req: Request, res: Response) => {
+// Schedule a newsletter for future delivery
+export const scheduleNewsletter = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, topics, summaryIds } = req.body;
-    
-    // Get the summaries for the newsletter
-    const summaries = await Summary.find({
-      _id: { $in: summaryIds },
-    });
-    
-    if (summaries.length === 0) {
-      return res.status(400).json(apiResponse.error('No valid summaries found'));
+    const { id } = req.params;
+    const { scheduledDate } = req.body;
+
+    if (!scheduledDate) {
+      res.status(400).json(apiResponse.error('Scheduled date is required'));
+      return;
     }
-    
-    // Combine summaries content
-    const combinedContent = summaries.map(s => s.content).join('\n\n');
-    
-    // Generate newsletter content using OpenAI
-    const content = await openaiService.generateNewsletter(combinedContent, topics);
-    
-    // Create newsletter
-    const newsletter = await Newsletter.create({
-      title,
-      content,
-      topics,
-      summaries: summaries.map(s => s._id),
-    });
-    
-    res.status(201).json(apiResponse.success(newsletter));
+
+    // Make sure the date is in the future
+    const scheduleTime = new Date(scheduledDate);
+    if (scheduleTime <= new Date()) {
+      res.status(400).json(apiResponse.error('Scheduled date must be in the future'));
+      return;
+    }
+
+    const newsletter = await Newsletter.findById(id);
+
+    if (!newsletter) {
+      res.status(404).json(apiResponse.error('Newsletter not found'));
+      return;
+    }
+
+    // Update the newsletter with scheduling information
+    newsletter.scheduledDate = scheduleTime;
+    newsletter.status = 'scheduled';
+    await newsletter.save();
+
+    res.json(apiResponse.success(newsletter, 'Newsletter scheduled successfully'));
   } catch (error) {
-    logger.error(`Error creating newsletter: ${error}`);
+    logger.error(`Error scheduling newsletter: ${error}`);
     if (error instanceof Error) {
       res.status(500).json(apiResponse.error(error.message));
     } else {
@@ -45,32 +49,36 @@ export const createNewsletter = async (req: Request, res: Response) => {
   }
 };
 
+// You would also need to modify the sendNewsletter function to update the status:
 // Send newsletter to users
-export const sendNewsletter = async (req: Request, res: Response) => {
+export const sendNewsletter = async (req: Request, res: Response): Promise<void> => {
   try {
     const { newsletterId } = req.params;
-    
+
     const newsletter = await Newsletter.findById(newsletterId);
-    
+
     if (!newsletter) {
-      return res.status(404).json(apiResponse.error('Newsletter not found'));
+      res.status(404).json(apiResponse.error('Newsletter not found'));
+      return;
     }
-    
+
     // Find users with matching preferences
     const users = await User.find({
       'preferences.topics': { $in: newsletter.topics },
     });
-    
+
     if (users.length === 0) {
-      return res.status(400).json(apiResponse.error('No users found with matching preferences'));
+      res.status(400).json(apiResponse.error('No users found with matching preferences'));
+      return;
     }
-    
+
     // In a real app, you would send emails here
-    // For now, just mark as sent
-    newsletter.sentTo = users.map(user => user._id);
+    // Fix: Use the _id directly as it's already an ObjectId
+    newsletter.sentTo = users.map(user => user._id as mongoose.Types.ObjectId);
     newsletter.sentAt = new Date();
+    newsletter.status = 'sent';
     await newsletter.save();
-    
+
     res.json(apiResponse.success({
       newsletter,
       sentToCount: users.length,
@@ -85,11 +93,52 @@ export const sendNewsletter = async (req: Request, res: Response) => {
   }
 };
 
+// Also modify the createNewsletter function to set the initial status:
+export const createNewsletter = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { title, topics, summaryIds } = req.body;
+
+    // Get the summaries for the newsletter
+    const summaries = await Summary.find({
+      _id: { $in: summaryIds },
+    });
+
+    if (summaries.length === 0) {
+      res.status(400).json(apiResponse.error('No valid summaries found'));
+      return;
+    }
+
+    // Combine summaries content
+    const combinedContent = summaries.map(s => s.summary).join('\n\n');
+
+    // Generate newsletter content using OpenAI
+    const content = await generateNewsletter(combinedContent, topics);
+
+    // Create newsletter
+    const newsletter = await Newsletter.create({
+      title,
+      content,
+      topics,
+      summaries: summaries.map(s => s._id),
+      status: 'draft',  // Set initial status
+    });
+
+    res.status(201).json(apiResponse.success(newsletter, 'Newsletter created successfully'));
+  } catch (error) {
+    logger.error(`Error creating newsletter: ${error}`);
+    if (error instanceof Error) {
+      res.status(500).json(apiResponse.error(error.message));
+    } else {
+      res.status(500).json(apiResponse.error('An unknown error occurred'));
+    }
+  }
+};
+
 // Get all newsletters
 export const getAllNewsletters = async (req: Request, res: Response) => {
   try {
     const newsletters = await Newsletter.find().sort({ createdAt: -1 });
-    res.json(apiResponse.success(newsletters));
+    res.json(apiResponse.success(newsletters, 'Newsletters fetched successfully'));
   } catch (error) {
     logger.error(`Error fetching newsletters: ${error}`);
     if (error instanceof Error) {
@@ -101,16 +150,17 @@ export const getAllNewsletters = async (req: Request, res: Response) => {
 };
 
 // Get newsletter by ID
-export const getNewsletterById = async (req: Request, res: Response) => {
+export const getNewsletterById = async (req: Request, res: Response): Promise<void> => {
   try {
     const newsletter = await Newsletter.findById(req.params.id)
       .populate('summaries')
       .populate('sentTo', 'name email');
-    
+
     if (!newsletter) {
-      return res.status(404).json(apiResponse.error('Newsletter not found'));
+      res.status(404).json(apiResponse.error('Newsletter not found'));
+      return;
     }
-    
+
     res.json(apiResponse.success(newsletter));
   } catch (error) {
     logger.error(`Error fetching newsletter: ${error}`);
@@ -123,15 +173,16 @@ export const getNewsletterById = async (req: Request, res: Response) => {
 };
 
 // Delete newsletter
-export const deleteNewsletter = async (req: Request, res: Response) => {
+export const deleteNewsletter = async (req: Request, res: Response): Promise<void> => {
   try {
     const newsletter = await Newsletter.findById(req.params.id);
-    
+
     if (!newsletter) {
-      return res.status(404).json(apiResponse.error('Newsletter not found'));
+      res.status(404).json(apiResponse.error('Newsletter not found'));
+      return;
     }
-    
-    await newsletter.remove();
+
+    await Newsletter.findByIdAndDelete(req.params.id);
     res.json(apiResponse.success({}, 'Newsletter removed'));
   } catch (error) {
     logger.error(`Error deleting newsletter: ${error}`);

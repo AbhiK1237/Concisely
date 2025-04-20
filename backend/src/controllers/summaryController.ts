@@ -1,33 +1,47 @@
 import { Request, Response } from 'express';
 import Summary from '../models/Summary';
-import { openaiService } from '../services/openaiService';
-import { youtubeService } from '../services/youtubeService';
-import { websiteService } from '../services/websiteService';
-import { pdfService } from '../services/pdfService';
+import { generateSummary, extractTopics } from '../services/openaiService';
+import { getTranscript } from '../services/youtubeService';
+import { scrapeArticle } from '../services/websiteService';
+import { extractTextFromPdf } from '../services/pdfService';
 import { apiResponse } from '../utils/apiResponse';
 import { logger } from '../utils/logger';
+import mongoose from 'mongoose';
+import { promises } from 'dns';
+
+interface AuthRequest extends Request {
+  user?: {
+    _id: mongoose.Types.ObjectId;
+  };
+}
 
 // Create a summary from a YouTube video
-export const createYouTubeSummary = async (req: Request, res: Response) => {
+export const createYouTubeSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { videoUrl, title } = req.body;
-    
+
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     // Get the transcript from YouTube
-    const transcript = await youtubeService.getTranscript(videoUrl);
-    
+    const transcript = await getTranscript(videoUrl);
+
     // Generate summary using OpenAI
-    const summary = await openaiService.generateSummary(transcript);
-    
+    const summary = await generateSummary(transcript[0].text, "youtube", "long");
+
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'YouTube Summary',
-      content: summary,
+      summary: summary,
+      originalContent: transcript[0].text,
       sourceUrl: videoUrl,
       sourceType: 'youtube',
-      user: req.user._id,
+      userId: req.user._id,
       topics: req.body.topics || [],
     });
-    
+
     res.status(201).json(apiResponse.success(newSummary));
   } catch (error) {
     logger.error(`Error creating YouTube summary: ${error}`);
@@ -40,26 +54,32 @@ export const createYouTubeSummary = async (req: Request, res: Response) => {
 };
 
 // Create a summary from a website
-export const createWebsiteSummary = async (req: Request, res: Response) => {
+export const createWebsiteSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { websiteUrl, title } = req.body;
-    
+
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     // Get the content from the website
-    const content = await websiteService.getContent(websiteUrl);
-    
+    const result = await scrapeArticle(websiteUrl);
+
     // Generate summary using OpenAI
-    const summary = await openaiService.generateSummary(content);
-    
+    const summary = await generateSummary(result.content, "article", "long");
+
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'Website Summary',
-      content: summary,
+      summary: summary,
+      originalContent: result.content,
       sourceUrl: websiteUrl,
-      sourceType: 'website',
-      user: req.user._id,
+      sourceType: 'article', // Changed from 'website' to match enum in model
+      userId: req.user._id,
       topics: req.body.topics || [],
     });
-    
+
     res.status(201).json(apiResponse.success(newSummary));
   } catch (error) {
     logger.error(`Error creating website summary: ${error}`);
@@ -72,25 +92,32 @@ export const createWebsiteSummary = async (req: Request, res: Response) => {
 };
 
 // Create a summary from a PDF
-export const createPdfSummary = async (req: Request, res: Response) => {
+export const createPdfSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { pdfFile, title } = req.body;
-    
+
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     // Extract text from PDF
-    const content = await pdfService.extractText(pdfFile);
-    
+    const content = await extractTextFromPdf(pdfFile);
+
     // Generate summary using OpenAI
-    const summary = await openaiService.generateSummary(content);
-    
+    const summary = await generateSummary(content, "document", "long");
+
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'PDF Summary',
-      content: summary,
-      sourceType: 'pdf',
-      user: req.user._id,
+      summary: summary,
+      originalContent: content,
+      sourceUrl: '', // Added required field
+      sourceType: 'document', // Changed from 'pdf' to match enum in model
+      userId: req.user._id,
       topics: req.body.topics || [],
     });
-    
+
     res.status(201).json(apiResponse.success(newSummary));
   } catch (error) {
     logger.error(`Error creating PDF summary: ${error}`);
@@ -103,26 +130,32 @@ export const createPdfSummary = async (req: Request, res: Response) => {
 };
 
 // Create a summary from a podcast
-export const createPodcastSummary = async (req: Request, res: Response) => {
+export const createPodcastSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { podcastUrl, title } = req.body;
-    
+
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     // Get transcript from podcast (this would typically involve audio processing)
-    const transcript = await youtubeService.getTranscript(podcastUrl); // Using YouTube service as placeholder
-    
+    const transcript = await getTranscript(podcastUrl); // Using YouTube service as placeholder
+
     // Generate summary using OpenAI
-    const summary = await openaiService.generateSummary(transcript);
-    
+    const summary = await generateSummary(transcript[0].text, "podcast", "long");
+
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'Podcast Summary',
-      content: summary,
+      summary: summary,
+      originalContent: transcript[0].text,
       sourceUrl: podcastUrl,
       sourceType: 'podcast',
-      user: req.user._id,
+      userId: req.user._id,
       topics: req.body.topics || [],
     });
-    
+
     res.status(201).json(apiResponse.success(newSummary));
   } catch (error) {
     logger.error(`Error creating podcast summary: ${error}`);
@@ -135,9 +168,14 @@ export const createPodcastSummary = async (req: Request, res: Response) => {
 };
 
 // Get all summaries for a user
-export const getUserSummaries = async (req: Request, res: Response) => {
+export const getUserSummaries = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const summaries = await Summary.find({ user: req.user._id }).sort({ createdAt: -1 });
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
+    const summaries = await Summary.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.json(apiResponse.success(summaries));
   } catch (error) {
     logger.error(`Error fetching user summaries: ${error}`);
@@ -150,19 +188,26 @@ export const getUserSummaries = async (req: Request, res: Response) => {
 };
 
 // Get a single summary by ID
-export const getSummaryById = async (req: Request, res: Response) => {
+export const getSummaryById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     const summary = await Summary.findById(req.params.id);
-    
+
     if (!summary) {
-      return res.status(404).json(apiResponse.error('Summary not found'));
+      res.status(404).json(apiResponse.error('Summary not found'));
+      return;
     }
-    
+
     // Check if the summary belongs to the logged in user
-    if (summary.user.toString() !== req.user._id.toString()) {
-      return res.status(401).json(apiResponse.error('Not authorized'));
+    if (summary.userId.toString() !== req.user._id.toString()) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
     }
-    
+
     res.json(apiResponse.success(summary));
   } catch (error) {
     logger.error(`Error fetching summary: ${error}`);
@@ -175,20 +220,29 @@ export const getSummaryById = async (req: Request, res: Response) => {
 };
 
 // Delete a summary
-export const deleteSummary = async (req: Request, res: Response) => {
+export const deleteSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
     const summary = await Summary.findById(req.params.id);
-    
+
     if (!summary) {
-      return res.status(404).json(apiResponse.error('Summary not found'));
+      res.status(404).json(apiResponse.error('Summary not found'));
+      return;
+
     }
-    
+
     // Check if the summary belongs to the logged in user
-    if (summary.user.toString() !== req.user._id.toString()) {
-      return res.status(401).json(apiResponse.error('Not authorized'));
+    if (summary.userId.toString() !== req.user._id.toString()) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+
     }
-    
-    await summary.remove();
+
+    await Summary.deleteOne({ _id: summary._id }); // Updated from summary.remove()
     res.json(apiResponse.success({}, 'Summary removed'));
   } catch (error) {
     logger.error(`Error deleting summary: ${error}`);
