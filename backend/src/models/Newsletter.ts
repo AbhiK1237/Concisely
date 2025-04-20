@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 
 interface INewsletter extends mongoose.Document {
-  userId: mongoose.Types.ObjectId;
   title: string;
+  content: string;
+  topics: string[];
   summaries: mongoose.Types.ObjectId[];
+  sentTo: mongoose.Types.ObjectId[];
+  sentAt: Date;
   scheduledDate: Date;
-  sentDate: Date;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -13,34 +15,45 @@ interface INewsletter extends mongoose.Document {
 
 const newsletterSchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
     title: {
       type: String,
       required: true,
     },
+    content: {
+      type: String,
+      required: true,
+    },
+    topics: [
+      {
+        type: String,
+      }
+    ],
     summaries: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Summary',
       },
     ],
-    scheduledDate: {
+    sentTo: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: [],
+      },
+    ],
+    sentAt: {
       type: Date,
-      required: true,
+      default: null,
     },
-    sentDate: {
+    scheduledDate: {
       type: Date,
       default: null,
     },
     status: {
       type: String,
-      enum: ['scheduled', 'sent', 'failed'],
-      default: 'scheduled',
-    },
+      enum: ['draft', 'scheduled', 'sent', 'failed'],
+      default: 'draft',
+    }
   },
   { timestamps: true }
 );
