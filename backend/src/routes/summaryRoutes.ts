@@ -10,7 +10,8 @@ import {
   deleteSummary,
 } from '../controllers/summaryController';
 import { protect } from '../middleware/auth';
-
+import multer from 'multer';
+const upload = multer({ dest: 'uploads/' });
 const router = express.Router();
 
 // Protect all routes
@@ -19,7 +20,7 @@ router.use(protect);
 // Create summaries - MUST be BEFORE /:id route
 router.post('/youtube', createYouTubeSummary);
 router.post('/website', createWebsiteSummary);
-router.post('/pdf', createPdfSummary);
+router.post('/pdf', upload.single('pdfFile'), createPdfSummary);
 router.post('/podcast', createPodcastSummary);
 
 // Get all summaries for a user
