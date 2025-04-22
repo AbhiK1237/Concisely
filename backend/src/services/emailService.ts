@@ -1,3 +1,5 @@
+//emailservice.ts
+
 import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
 import Newsletter from '../models/Newsletter';
