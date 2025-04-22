@@ -6,7 +6,8 @@ import { generateNewsletter } from '../services/openaiService';
 import { apiResponse } from '../utils/apiResponse';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
-// Add this method to your newsletterController.ts file
+// Import the email service
+import { emailService } from '../services/emailService';
 
 // Schedule a newsletter for future delivery
 export const scheduleNewsletter = async (req: Request, res: Response): Promise<void> => {
@@ -49,40 +50,38 @@ export const scheduleNewsletter = async (req: Request, res: Response): Promise<v
   }
 };
 
-// You would also need to modify the sendNewsletter function to update the status:
+
 // Send newsletter to users
 export const sendNewsletter = async (req: Request, res: Response): Promise<void> => {
   try {
     const { newsletterId } = req.params;
 
+    // First, check if the newsletter exists
     const newsletter = await Newsletter.findById(newsletterId);
-
     if (!newsletter) {
       res.status(404).json(apiResponse.error('Newsletter not found'));
       return;
     }
 
-    // Find users with matching preferences
-    const users = await User.find({
-      'preferences.topics': { $in: newsletter.topics },
-    });
+    // Use the emailService to send the newsletter
+    const result = await emailService.sendNewsletter(newsletterId);
 
-    if (users.length === 0) {
-      res.status(400).json(apiResponse.error('No users found with matching preferences'));
+    if (!result.success) {
+      if (result.sentCount === 0 && result.failedCount === 0) {
+        res.status(400).json(apiResponse.error('No users found with matching preferences'));
+      } else {
+        res.status(500).json(apiResponse.error(`Failed to send newsletter: ${result.failedCount} failures`));
+      }
       return;
     }
 
-    // In a real app, you would send emails here
-    // Fix: Use the _id directly as it's already an ObjectId
-    newsletter.sentTo = users.map(user => user._id as mongoose.Types.ObjectId);
-    newsletter.sentAt = new Date();
-    newsletter.status = 'sent';
-    await newsletter.save();
-
+    // Return success response with the result
     res.json(apiResponse.success({
       newsletter,
-      sentToCount: users.length,
+      sentToCount: result.sentCount,
+      failedCount: result.failedCount
     }, 'Newsletter sent successfully'));
+
   } catch (error) {
     logger.error(`Error sending newsletter: ${error}`);
     if (error instanceof Error) {

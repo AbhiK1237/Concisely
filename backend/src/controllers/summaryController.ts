@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Summary from '../models/Summary';
 import { generateSummary, extractTopics } from '../services/openaiService';
-import { getTranscript, getTranscriptText } from '../services/youtubeService';
+import { getTranscriptText } from '../services/youtubeService';
 import { scrapeArticle } from '../services/websiteService';
 import { extractTextFromPdf } from '../services/pdfService';
 import { apiResponse } from '../utils/apiResponse';
@@ -94,14 +94,20 @@ export const createWebsiteSummary = async (req: AuthRequest, res: Response): Pro
 // Create a summary from a PDF
 export const createPdfSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { pdfFile, title } = req.body;
+    const { title } = req.body;
+    const pdfFile = req.file?.path; // Get the path from multer
 
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
       return;
     }
 
-    // Extract text from PDF
+    if (!pdfFile) {
+      res.status(400).json(apiResponse.error('PDF file is required'));
+      return;
+    }
+
+    // Extract text from PDF (your existing code works here since now pdfFile is a path)
     const content = await extractTextFromPdf(pdfFile);
 
     // Generate summary using OpenAI
@@ -112,7 +118,7 @@ export const createPdfSummary = async (req: AuthRequest, res: Response): Promise
       title: title || 'PDF Summary',
       summary: summary,
       originalContent: content,
-      sourceUrl: '', // Added required field
+      sourceUrl: req.file?.originalname || 'local-pdf-upload',
       sourceType: 'document', // Changed from 'pdf' to match enum in model
       userId: req.user._id,
       topics: req.body.topics || [],
@@ -140,16 +146,16 @@ export const createPodcastSummary = async (req: AuthRequest, res: Response): Pro
     }
 
     // Get transcript from podcast (this would typically involve audio processing)
-    const transcript = await getTranscript(podcastUrl); // Using YouTube service as placeholder
+    const transcript = await getTranscriptText(podcastUrl); // Using YouTube service as placeholder
 
     // Generate summary using OpenAI
-    const summary = await generateSummary(transcript[0].text, "podcast", "long");
+    const summary = await generateSummary(transcript, "podcast", "long");
 
     // Save the summary
     const newSummary = await Summary.create({
       title: title || 'Podcast Summary',
       summary: summary,
-      originalContent: transcript[0].text,
+      originalContent: transcript,
       sourceUrl: podcastUrl,
       sourceType: 'podcast',
       userId: req.user._id,
