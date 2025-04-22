@@ -23,7 +23,7 @@ export const initScheduler = () => {
                 try {
                     // Ensure newsletter has the correct type
                     const newsletterId = (newsletter._id as string);
-                    
+
                     // Use the email service to send the newsletter
                     const result = await emailService.sendNewsletter(newsletterId);
 
