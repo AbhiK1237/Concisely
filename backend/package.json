@@ -12,6 +12,7 @@
   "description": "",
   "dependencies": {
     "@types/cheerio": "^0.22.35",
+    "@types/showdown": "^2.0.6",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "cheerio": "^1.0.0",
@@ -26,6 +27,7 @@
     "openai": "^4.87.3",
     "pdf-parse": "^1.1.1",
     "puppeteer": "^24.6.0",
+    "showdown": "^2.1.0",
     "winston": "^3.17.0",
     "youtube-transcript": "^1.2.1",
     "youtube-transcript-api": "^1.1.2",
