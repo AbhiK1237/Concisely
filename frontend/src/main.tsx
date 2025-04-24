@@ -9,18 +9,27 @@ import Dashboard from './pages/Dashboard'
 import NewsletterPreferences from './pages/Settings'
 import TopicSelection from './pages/Selection'
 import ContentSourceInput from './pages/Source'
+import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="/settings" element={<NewsletterPreferences />} />
-          <Route path="/summaries" element={<TopicSelection />} />
-          <Route path="/sources" element={<ContentSourceInput />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route index element={<LandingPage />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/settings" element={<NewsletterPreferences />} />
+            <Route path="/summaries" element={<TopicSelection />} />
+            <Route path="/sources" element={<ContentSourceInput />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   </StrictMode>
 )
