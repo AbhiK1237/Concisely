@@ -6,8 +6,21 @@ import Newsletter from '../models/Newsletter';
 import User from '../models/User';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+// Import a markdown converter library - you'll need to install this
+import showdown from 'showdown';
 
 dotenv.config();
+
+// Initialize markdown converter with specific extensions
+const converter = new showdown.Converter({
+    tables: true,
+    simplifiedAutoLink: true,
+    strikethrough: true,
+    tasklists: true,
+    literalMidWordAsterisks: true, // Handle asterisks within words
+    parseImgDimensions: true,
+    simpleLineBreaks: true // Convert \n to <br>
+});
 
 // Email configuration
 const transporter = nodemailer.createTransport({
@@ -55,8 +68,26 @@ const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     }
 };
 
+// Pre-process LLM-generated content to fix common issues
+const preprocessLLMContent = (content: string): string => {
+    // Ensure \n is properly handled for line breaks
+    let processed = content.replace(/\\n/g, '\n');
+
+    // Handle standalone asterisks that aren't intended for markdown
+    processed = processed.replace(/\*\*/g, '<strong>').replace(/\*\*/g, '</strong>');
+
+    // Fix any inconsistent whitespace
+    processed = processed.replace(/\n\s+\n/g, '\n\n');
+
+    return processed;
+};
+
 // Format newsletter content into HTML email
 const formatNewsletterEmail = (newsletter: any): string => {
+    // Pre-process and convert markdown content to HTML
+    const preprocessed = preprocessLLMContent(newsletter.content);
+    const htmlContent = converter.makeHtml(preprocessed);
+
     return `
     <!DOCTYPE html>
     <html>
@@ -77,6 +108,13 @@ const formatNewsletterEmail = (newsletter: any): string => {
           border-bottom: 1px solid #ddd;
           padding-bottom: 10px;
         }
+        h2 {
+          color: #555;
+          margin-top: 25px;
+        }
+        h3 {
+          color: #666;
+        }
         .topics {
           margin-bottom: 15px;
           color: #666;
@@ -84,6 +122,34 @@ const formatNewsletterEmail = (newsletter: any): string => {
         }
         .content {
           margin-top: 20px;
+        }
+        .content ul, .content ol {
+          margin-left: 20px;
+          padding-left: 15px;
+        }
+        .content li {
+          margin-bottom: 5px;
+        }
+        .content hr {
+          border: 0;
+          height: 1px;
+          background: #ddd;
+          margin: 25px 0;
+        }
+        .content blockquote {
+          border-left: 3px solid #ddd;
+          padding-left: 10px;
+          color: #666;
+          margin-left: 0;
+        }
+        .content strong, .content b {
+          font-weight: bold;
+        }
+        .content em, .content i {
+          font-style: italic;
+        }
+        .content p {
+          margin: 15px 0;
         }
         .footer {
           margin-top: 30px;
@@ -98,7 +164,7 @@ const formatNewsletterEmail = (newsletter: any): string => {
       <h1>${newsletter.title}</h1>
       <div class="topics">Topics: ${newsletter.topics.join(', ')}</div>
       <div class="content">
-        ${newsletter.content}
+        ${htmlContent}
       </div>
       <div class="footer">
         <p>You received this newsletter because you subscribed to these topics.</p>
@@ -171,7 +237,6 @@ const sendNewsletter = async (
         }
 
         // Update the newsletter in the database
-        // Fix: Convert user._id to mongoose ObjectId explicitly
         newsletter.sentTo = users.map(user => user._id as mongoose.Types.ObjectId);
         newsletter.sentAt = new Date();
         newsletter.status = sentCount > 0 ? 'sent' : 'failed';
