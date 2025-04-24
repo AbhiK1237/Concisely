@@ -62,7 +62,7 @@ const sourceTypeIcons: { [key: string]: JSX.Element } = {
 
 const Dashboard = () => {
   const [savedItems, setSavedItems] = useState<number[]>([]);
-  
+
   const toggleSave = (summaryId: number) => {
     if (savedItems.includes(summaryId)) {
       setSavedItems(savedItems.filter(id => id !== summaryId));
@@ -70,7 +70,7 @@ const Dashboard = () => {
       setSavedItems([...savedItems, summaryId]);
     }
   };
-  
+
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -80,7 +80,7 @@ const Dashboard = () => {
         </div>
         <Button className="mt-4 md:mt-0">+ New Summary</Button>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Tabs defaultValue="recent">
@@ -88,7 +88,7 @@ const Dashboard = () => {
               <TabsTrigger value="recent">Recent Summaries</TabsTrigger>
               <TabsTrigger value="saved">Saved Items</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="recent">
               {recentSummaries.map(summary => (
                 <Card key={summary.id} className="mb-4">
@@ -104,8 +104,8 @@ const Dashboard = () => {
                           <span className="ml-1">{summary.date}</span>
                         </CardDescription>
                       </div>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => toggleSave(summary.id)}
                       >
@@ -137,7 +137,7 @@ const Dashboard = () => {
                 </Card>
               ))}
             </TabsContent>
-            
+
             <TabsContent value="saved">
               {savedItems.length > 0 ? (
                 recentSummaries
@@ -161,7 +161,7 @@ const Dashboard = () => {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -192,15 +192,15 @@ const Dashboard = () => {
               <Button variant="outline" className="w-full">Edit Preferences</Button>
             </CardFooter>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Upcoming Newsletters</CardTitle>
             </CardHeader>
             <CardContent>
               {scheduledNewsletters.map(newsletter => (
-                <div 
-                  key={newsletter.id} 
+                <div
+                  key={newsletter.id}
                   className="flex items-center justify-between py-2 border-b last:border-0"
                 >
                   <div>
