@@ -24,6 +24,7 @@ interface AuthContextType {
     signup: (name: string, email: string, password: string) => Promise<void>;
     logout: () => void;
     error: string | null;
+    setUser: (user: User) => void;
 }
 
 // Create the auth context
@@ -133,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         delete axios.defaults.headers.common['Authorization'];
     };
 
+    const setUserData = (updatedUser: User) => {
+        setUser(updatedUser);
+    };
+
     const value = {
         user,
         token,
@@ -142,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         error,
+        setUser: setUserData,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
