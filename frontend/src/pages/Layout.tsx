@@ -5,7 +5,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Layout() {
@@ -24,17 +24,39 @@ export default function Layout() {
     });
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
     <SidebarProvider collapsed={!sidebarOpen}>
       <div className="flex min-h-screen">
-        {/* Sidebar - using a fixed width instead of dynamic width transition */}
-        <div className={`fixed left-0 top-0 bottom-0 z-20 transition-all duration-300 w-64 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-64px)]'} bg-sidebar`}>
+        {/* Sidebar with toggle control */}
+        <div className={`fixed left-0 top-0 bottom-0 z-20 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-16'} bg-sidebar flex flex-col`}>
+          {/* Sidebar toggle button */}
+          <div className="h-17.5 flex items-center justify-end px-2 border-b border-sidebar-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="text-sidebar-foreground"
+              aria-label="Toggle sidebar"
+            >
+              {sidebarOpen ? (
+                <ChevronLeft className="h-5 w-5" />
+              ) : (
+                <ChevronRight className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+
+          {/* Sidebar content */}
           <AppSidebar />
         </div>
 
         {/* Main Content Area */}
-        <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
-          <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+        <div className={`flex-1 transition-all duration-300 w-full ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
+          <Navbar sidebarWidth={sidebarOpen ? '16rem' : '4rem'}>
             {/* Add user info and logout button to navbar */}
             <div className="flex items-center ml-auto">
               <div className="mr-4 text-sm">
