@@ -19,8 +19,8 @@ router.use(protect);
 
 // Create summaries - MUST be BEFORE /:id route
 router.post('/youtube', createYouTubeSummary);
-router.post('/website', createWebsiteSummary);
-router.post('/pdf', upload.single('pdfFile'), createPdfSummary);
+router.post('/article', createWebsiteSummary);
+router.post('/document', upload.single('document'), createPdfSummary);
 router.post('/podcast', createPodcastSummary);
 
 // Get all summaries for a user
