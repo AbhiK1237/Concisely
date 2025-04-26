@@ -41,7 +41,7 @@ export function AppSidebar() {
   const { collapsed } = useSidebar();
 
   return (
-    <div className="h-full flex flex-col pt-[64px]">
+    <div className="h-full flex flex-col pt-[16px]">
       <div className={cn("py-2 flex-1", collapsed ? "px-0" : "px-3")}>
         <div className={cn("space-y-1", collapsed ? "px-0" : "px-1")}>
           <SidebarItem to="/dashboard" icon={<Home size={18} />} label="Dashboard" />
