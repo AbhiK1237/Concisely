@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Summary from '../models/Summary';
 import { generateSummary, extractTopics } from '../services/openaiService';
-import { getTranscriptText } from '../services/youtubeService';
+import { getTranscriptText, getVideoInfo } from '../services/youtubeService';
 import { scrapeArticle } from '../services/websiteService';
 import { extractTextFromPdf } from '../services/pdfService';
 import { apiResponse } from '../utils/apiResponse';
@@ -18,15 +18,15 @@ interface AuthRequest extends Request {
 // Create a summary from a YouTube video
 export const createYouTubeSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { videoUrl, title } = req.body;
-
+    const { url } = req.body;
+    const { title } = await getVideoInfo(url);
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
       return;
     }
 
     // Get the transcript from YouTube
-    const transcript = await getTranscriptText(videoUrl);
+    const transcript = await getTranscriptText(url);
 
     // Generate summary using OpenAI
     const summary = await generateSummary(transcript, "youtube", "long");
@@ -36,7 +36,7 @@ export const createYouTubeSummary = async (req: AuthRequest, res: Response): Pro
       title: title || 'YouTube Summary',
       summary: summary,
       originalContent: transcript,
-      sourceUrl: videoUrl,
+      sourceUrl: url,
       sourceType: 'youtube',
       userId: req.user._id,
       topics: req.body.topics || [],
@@ -56,7 +56,7 @@ export const createYouTubeSummary = async (req: AuthRequest, res: Response): Pro
 // Create a summary from a website
 export const createWebsiteSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { websiteUrl, title } = req.body;
+    const { url } = req.body;
 
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
@@ -64,17 +64,17 @@ export const createWebsiteSummary = async (req: AuthRequest, res: Response): Pro
     }
 
     // Get the content from the website
-    const result = await scrapeArticle(websiteUrl);
+    const result = await scrapeArticle(url);
 
     // Generate summary using OpenAI
     const summary = await generateSummary(result.content, "article", "long");
 
     // Save the summary
     const newSummary = await Summary.create({
-      title: title || 'Website Summary',
+      title: result.title || 'Website Summary',
       summary: summary,
       originalContent: result.content,
-      sourceUrl: websiteUrl,
+      sourceUrl: url,
       sourceType: 'article', // Changed from 'website' to match enum in model
       userId: req.user._id,
       topics: req.body.topics || [],
@@ -95,20 +95,20 @@ export const createWebsiteSummary = async (req: AuthRequest, res: Response): Pro
 export const createPdfSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { title } = req.body;
-    const pdfFile = req.file?.path; // Get the path from multer
+    const document = req.file?.path; // Get the path from multer
 
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
       return;
     }
 
-    if (!pdfFile) {
+    if (!document) {
       res.status(400).json(apiResponse.error('PDF file is required'));
       return;
     }
 
     // Extract text from PDF (your existing code works here since now pdfFile is a path)
-    const content = await extractTextFromPdf(pdfFile);
+    const content = await extractTextFromPdf(document);
 
     // Generate summary using OpenAI
     const summary = await generateSummary(content, "document", "long");

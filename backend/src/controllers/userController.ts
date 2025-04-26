@@ -29,7 +29,8 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
 // Update user preferences
 export const updateUserPreferences = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { topics, deliveryFrequency, summaryLength, maxItemsPerNewsletter } = req.body;
+    const { preferences } = req.body;
+    const { topics, deliveryFrequency, summaryLength, maxItemsPerNewsletter } = preferences || {};
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
       return;
@@ -71,7 +72,7 @@ export const updateUserPreferences = async (req: AuthRequest, res: Response): Pr
 };
 
 // Delete user account
-export const deleteUser = async (req: AuthRequest, res: Response):Promise<void> => {
+export const deleteUser = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
@@ -79,8 +80,8 @@ export const deleteUser = async (req: AuthRequest, res: Response):Promise<void> 
     }
     const user = await User.findById(req.user._id);
     if (!user) {
-     res.status(404).json(apiResponse.error('User not found'));
-     return;
+      res.status(404).json(apiResponse.error('User not found'));
+      return;
     }
     await User.findByIdAndDelete(req.user._id);
     res.json(apiResponse.success({}, 'User removed'));
