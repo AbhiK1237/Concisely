@@ -8,6 +8,7 @@ import {
   getUserSummaries,
   getSummaryById,
   deleteSummary,
+  rateSummary
 } from '../controllers/summaryController';
 import { protect } from '../middleware/auth';
 import multer from 'multer';
@@ -22,7 +23,7 @@ router.post('/youtube', createYouTubeSummary);
 router.post('/article', createWebsiteSummary);
 router.post('/document', upload.single('document'), createPdfSummary);
 router.post('/podcast', createPodcastSummary);
-
+router.post("/:id/rate", rateSummary)
 // Get all summaries for a user
 router.get('/', getUserSummaries);
 
