@@ -259,3 +259,54 @@ export const deleteSummary = async (req: AuthRequest, res: Response): Promise<vo
     }
   }
 };
+
+
+// Add this to the existing summaryController.js
+
+// Rate a summary
+export const rateSummary = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+
+    if (!req.user) {
+      res.status(401).json(apiResponse.error('Not authorized'));
+      return;
+    }
+
+    // Valid ratings
+    const validRatings = ['helpful', 'not_helpful'];
+    if (!validRatings.includes(rating)) {
+      res.status(400).json(apiResponse.error('Invalid rating value'));
+      return;
+    }
+
+    // Find the summary
+    const summary = await Summary.findById(id);
+    if (!summary) {
+      res.status(404).json(apiResponse.error('Summary not found'));
+      return;
+    }
+
+    // Initialize ratings if they don't exist
+    if (!summary.ratings) {
+      summary.ratings = {
+        helpful: 0,
+        not_helpful: 0
+      };
+    }
+
+    // Increment the appropriate rating counter
+    summary.ratings[rating as 'helpful' | 'not_helpful']++;
+    await summary.save();
+
+    res.json(apiResponse.success(summary, 'Rating submitted successfully'));
+  } catch (error) {
+    logger.error(`Error rating summary: ${error}`);
+    if (error instanceof Error) {
+      res.status(500).json(apiResponse.error(error.message));
+    } else {
+      res.status(500).json(apiResponse.error('An unknown error occurred'));
+    }
+  }
+};
