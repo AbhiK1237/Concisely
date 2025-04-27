@@ -1,10 +1,12 @@
-import mongoose from 'mongoose';
+// User Model
+import mongoose, { Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 interface IUser extends mongoose.Document {
   name: string;
   email: string;
   password: string;
+  savedSummaries: Types.ObjectId[];  // Added missing field
   preferences: {
     topics: string[];
     deliveryFrequency: string;
@@ -31,6 +33,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    savedSummaries: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Summary',
+      default: [],
+    }],
     preferences: {
       topics: {
         type: [String],

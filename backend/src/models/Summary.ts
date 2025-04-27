@@ -1,4 +1,10 @@
+// Summary Model
 import mongoose from 'mongoose';
+
+interface IRatings {
+  helpful: number;
+  not_helpful: number;
+}
 
 interface ISummary extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
@@ -8,6 +14,7 @@ interface ISummary extends mongoose.Document {
   sourceUrl: string;
   sourceType: string;
   topics: string[];
+  ratings: IRatings; // Added missing field
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +51,16 @@ const summarySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    ratings: {
+      helpful: {
+        type: Number,
+        default: 0
+      },
+      not_helpful: {
+        type: Number,
+        default: 0
+      }
+    }
   },
   { timestamps: true }
 );
