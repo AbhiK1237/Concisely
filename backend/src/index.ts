@@ -3,6 +3,9 @@ import app from './app';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 import { initScheduler } from './services/newsletterScheduler';
+import { scheduleContentAndNewsletters } from './services/contentScheduler';
+
+
 
 // Load environment variables
 dotenv.config();
@@ -12,6 +15,8 @@ console.log("PORT from env:", process.env.PORT);
 
 // Connect to database
 connectDB();
+
+scheduleContentAndNewsletters();
 
 // Initialize scheduler
 initScheduler();
