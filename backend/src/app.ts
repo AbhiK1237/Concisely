@@ -7,7 +7,7 @@ import summaryRoutes from './routes/summaryRoutes';
 import userRoutes from './routes/userRoutes';
 import newsletterRoutes from './routes/newsletterRoutes';
 import { errorHandler } from './middleware/errorHandler';
-
+import contentRoutes from './routes/contentRoutes';
 // Load environment variables
 dotenv.config();
 
@@ -24,7 +24,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/summaries', summaryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/newsletters', newsletterRoutes);
-
+app.use('/api/content', contentRoutes);
 // Error handling middleware
 app.use(errorHandler);
 
