@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import axios from 'axios';
+import FetchContentButton from '../components/FetchContentButton'
 
 const API_URL = 'http://localhost:5001/api';
 
@@ -285,6 +286,12 @@ const TopicSelection = () => {
               'Save Preferences'
             )}
           </Button>
+          {selectedTopics.length > 0 && (
+            <FetchContentButton
+              disabled={isLoading || selectedTopics.length === 0}
+              className="w-full mt-2 sm:mt-0"
+            />
+          )}
         </CardFooter>
       </Card>
       <Toaster />
