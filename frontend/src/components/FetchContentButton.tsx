@@ -37,11 +37,14 @@ const FetchContentButton: React.FC<FetchContentButtonProps> = ({ disabled = fals
                     Authorization: `Bearer ${token}`
                 }
             });
+            console.log('Response received:', response);
+            console.log('Response data:', response.data);
+            // console.log('Response data.data:', response.data.data);
 
             if (response.data.success) {
                 toast({
                     title: "Content refreshed",
-                    description: `Found ${response.data.data.summaries?.length || 0} new items based on your topics`,
+                    description: `Found ${response.data.data?.length || 0} new items based on your topics`,
                     variant: "success",
                 });
             } else {
@@ -51,11 +54,21 @@ const FetchContentButton: React.FC<FetchContentButtonProps> = ({ disabled = fals
                     variant: "default",
                 });
             }
-        } catch (error: any) {
+        }
+        catch (error: any) {
             console.error("Error fetching content:", error);
+            console.log("Error response:", error.response); // Log the full response for debugging
+
+            // Try multiple possible paths for the error message
+            const errorMessage =
+                error.response?.data?.data?.message || // Standard path
+                error.response?.data?.error || // Alternative path
+                error.message || // Direct error message
+                "Failed to fetch content. Please try again."; // Fallback
+
             toast({
                 title: "Error",
-                description: error.response?.data?.message || "Failed to fetch content. Please try again.",
+                description: errorMessage,
                 variant: "destructive",
             });
         } finally {
