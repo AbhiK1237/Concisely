@@ -33,8 +33,7 @@ router.post('/fetch', protect, async (req: AuthRequest, res: Response): Promise<
         const result = await fetchAndProcessContentForUser(userId.toString());
 
         if (result.success) {
-            res.json(apiResponse.success(result.data, 'Content fetched successfully'));
-
+            res.json(apiResponse.success(result.summaries, 'Content fetched successfully'));
             return;
         } else {
             res.status(400).json(apiResponse.error(result.message));
@@ -51,7 +50,6 @@ router.post('/fetch', protect, async (req: AuthRequest, res: Response): Promise<
         }
     }
 });
-
 router.post('/newsletter', protect, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         if (!req.user) {
