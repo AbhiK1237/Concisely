@@ -21,22 +21,26 @@ export interface ContentItem {
 }
 
 /**
- * Fetches latest web articles using Google Custom Search API
+ * Fetches relevant web articles using Google Custom Search API
+ * Prioritizes relevance over recency
  */
 export async function fetchLatestArticles(topic: string, maxResults: number = 5): Promise<ContentItem[]> {
     try {
+        // Request more results than needed to account for filtering out duplicates
+        const requestedResults = Math.min(maxResults * 2, 10); // API limit is 10
+
         const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
             params: {
                 key: GOOGLE_API_KEY,
                 cx: GOOGLE_SEARCH_ENGINE_ID,
                 q: topic,
-                dateRestrict: 'w1', // Last week
-                sort: 'date', // Sort by date
-                num: maxResults,
+                num: requestedResults,
+                // Removed dateRestrict and sort parameters to prioritize relevance
             },
         });
 
         if (!response.data.items || response.data.items.length === 0) {
+            logger.info(`No results found for topic: ${topic}`);
             return [];
         }
 
@@ -48,29 +52,34 @@ export async function fetchLatestArticles(topic: string, maxResults: number = 5)
             sourceType: 'article',
         }));
     } catch (error) {
-        logger.error('Error fetching articles:', error);
+        logger.error(`Error fetching articles for topic "${topic}":`, error);
         return [];
     }
 }
 
 /**
- * Fetches latest YouTube videos using YouTube Data API
+ * Fetches relevant YouTube videos based on a topic
+ * Prioritizes relevance over recency
  */
 export async function fetchLatestVideos(topic: string, maxResults: number = 5): Promise<ContentItem[]> {
     try {
+        // Request more results than needed to account for filtering out duplicates
+        const requestedResults = Math.min(maxResults * 2, 10); // API limit is usually 50, but we'll use 10
+
         const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
             params: {
                 key: YOUTUBE_API_KEY,
                 q: topic,
                 part: 'snippet',
                 type: 'video',
-                order: 'date', // Sort by date
-                maxResults: maxResults,
-                publishedAfter: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // Last week
+                order: 'relevance', // Changed from 'date' to 'relevance'
+                maxResults: requestedResults,
+                // Removed publishedAfter to avoid time restriction
             },
         });
 
         if (!response.data.items || response.data.items.length === 0) {
+            logger.info(`No YouTube videos found for topic: ${topic}`);
             return [];
         }
 
@@ -82,13 +91,14 @@ export async function fetchLatestVideos(topic: string, maxResults: number = 5): 
             sourceType: 'youtube',
         }));
     } catch (error) {
-        logger.error('Error fetching YouTube videos:', error);
+        logger.error(`Error fetching YouTube videos for topic "${topic}":`, error);
         return [];
     }
 }
 
 /**
  * Combines and sorts results from both article and video searches
+ * Ensures a balance between different content types
  */
 export async function searchContentByTopic(topic: string, maxResults: number = 3): Promise<ContentItem[]> {
     const [articles, videos] = await Promise.all([
@@ -96,13 +106,87 @@ export async function searchContentByTopic(topic: string, maxResults: number = 3
         fetchLatestVideos(topic, maxResults),
     ]);
 
-    // Combine and sort by published date
-    const allContent = [...articles, ...videos].sort((a, b) =>
+    logger.info(`Found ${articles.length} articles and ${videos.length} videos for topic "${topic}"`);
+
+    // Ensure balance between content types
+    const result: ContentItem[] = [];
+
+    // Calculate how many of each type to include
+    const halfMax = Math.ceil(maxResults / 2);
+
+    // Take up to half the results from articles
+    if (articles.length > 0) {
+        result.push(...articles.slice(0, halfMax));
+    }
+
+    // Take up to half the results from videos
+    if (videos.length > 0) {
+        result.push(...videos.slice(0, halfMax));
+    }
+
+    // If we don't have enough items, fill with whatever is available
+    if (result.length < maxResults) {
+        const remainingArticles = articles.slice(halfMax);
+        const remainingVideos = videos.slice(halfMax);
+        const remaining = [...remainingArticles, ...remainingVideos];
+
+        // Sort remaining by date and add enough to reach maxResults
+        remaining.sort((a, b) =>
+            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
+
+        result.push(...remaining.slice(0, maxResults - result.length));
+    }
+
+    // Final sort by date if needed
+    result.sort((a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
     );
 
-    // Return top results
-    return allContent.slice(0, maxResults);
+    return result.slice(0, maxResults);
+}
+
+/**
+ * Get previously processed URLs for a user
+ */
+async function getPreviouslyProcessedUrls(userId: string): Promise<string[]> {
+    try {
+        // Find all summaries that belong to this user
+        const summaries = await Summary.find(
+            { userId: userId },
+            { sourceUrl: 1, _id: 0 }
+        );
+
+        // Extract just the URLs
+        return summaries.map(summary => summary.sourceUrl);
+    } catch (error) {
+        logger.error(`Error getting previously processed URLs for user ${userId}:`, error);
+        return [];
+    }
+}
+
+/**
+ * Filter out content items that have already been processed for this user
+ */
+async function filterNewContent(
+    userId: string,
+    contentItems: ContentItem[],
+    maxItems: number
+): Promise<ContentItem[]> {
+    try {
+        const processedUrls = await getPreviouslyProcessedUrls(userId);
+
+        // Filter out items that have already been processed
+        const newItems = contentItems.filter(item => !processedUrls.includes(item.url));
+
+        logger.info(`Found ${newItems.length} new items out of ${contentItems.length} total items for user ${userId}`);
+
+        // Return up to maxItems
+        return newItems.slice(0, maxItems);
+    } catch (error) {
+        logger.error(`Error filtering new content for user ${userId}:`, error);
+        return contentItems.slice(0, maxItems); // Fallback to original behavior
+    }
 }
 
 /**
@@ -121,7 +205,6 @@ export async function extractContentFromUrl(url: string, sourceType: string): Pr
         }
     } else if (sourceType === 'youtube') {
         try {
-
             const response = await getTranscriptText(url);
             return response;
         } catch (error) {
@@ -142,16 +225,42 @@ export async function processContentItem(
     item: ContentItem
 ): Promise<{ success: boolean; summary: any }> {
     try {
-        // Check if we already have a summary for this URL to avoid duplicates
-        const existingSummary = await Summary.findOne({ sourceUrl: item.url });
+        // Check if we already have a summary for this URL and user
+        const existingSummary = await Summary.findOne({
+            sourceUrl: item.url,
+            userId: userId
+        });
+
         if (existingSummary) {
-            // If it exists but user doesn't have it, add it to their saved summaries
-            const user = await User.findById(userId);
-            if (user && !user.savedSummaries.includes(existingSummary._id as mongoose.Types.ObjectId)) {
-                user.savedSummaries.push(existingSummary._id as mongoose.Types.ObjectId);
-                await user.save();
-            }
+            logger.info(`Summary for ${item.url} already exists for user ${userId}`);
             return { success: true, summary: existingSummary };
+        }
+
+        // Check if the summary exists for another user
+        const otherUserSummary = await Summary.findOne({ sourceUrl: item.url });
+        if (otherUserSummary) {
+            // Create a copy for this user
+            const newSummary = new Summary({
+                userId,
+                title: otherUserSummary.title,
+                originalContent: otherUserSummary.originalContent,
+                summary: otherUserSummary.summary,
+                sourceUrl: otherUserSummary.sourceUrl,
+                sourceType: otherUserSummary.sourceType,
+                topics: otherUserSummary.topics,
+                ratings: { helpful: 0, not_helpful: 0 }
+            });
+
+            const savedSummary = await newSummary.save();
+
+            // Add to user's saved summaries
+            await User.findByIdAndUpdate(
+                userId,
+                { $push: { savedSummaries: savedSummary._id } },
+                { new: true }
+            );
+
+            return { success: true, summary: savedSummary };
         }
 
         // Extract content from URL
@@ -209,6 +318,7 @@ export async function fetchAndProcessContentForUser(userId: string): Promise<any
         }
 
         const maxItemsPerTopic = Math.ceil(user.preferences.maxItemsPerNewsletter / user.preferences.topics.length);
+        const requestItemsPerTopic = maxItemsPerTopic * 2; // Request more to ensure we have enough new content
 
         const allProcessedItems = [];
         const failedItems = [];
@@ -216,10 +326,18 @@ export async function fetchAndProcessContentForUser(userId: string): Promise<any
         // Process each topic
         for (const topic of user.preferences.topics) {
             // Search for content on this topic
-            const contentItems = await searchContentByTopic(topic, maxItemsPerTopic);
+            const contentItems = await searchContentByTopic(topic, requestItemsPerTopic);
+
+            // Filter out content that's already been processed for this user
+            const newContentItems = await filterNewContent(userId, contentItems, maxItemsPerTopic);
+
+            if (newContentItems.length === 0) {
+                logger.info(`No new content found for topic "${topic}"`);
+                continue;
+            }
 
             // Process each content item
-            for (const item of contentItems) {
+            for (const item of newContentItems) {
                 const result = await processContentItem(userId, item);
                 if (result.success) {
                     allProcessedItems.push(result.summary);
@@ -232,14 +350,14 @@ export async function fetchAndProcessContentForUser(userId: string): Promise<any
         if (allProcessedItems.length === 0) {
             return {
                 success: false,
-                message: "No new content could be processed",
+                message: "No new content found to process. Try again later or add more topics of interest.",
                 failedItems
             };
         }
 
         return {
             success: true,
-            message: `Successfully processed ${allProcessedItems.length} items`,
+            message: `Successfully processed ${allProcessedItems.length} new items`,
             summaries: allProcessedItems,
             failedItems: failedItems.length > 0 ? failedItems : undefined
         };
