@@ -39,7 +39,6 @@ const FetchContentButton: React.FC<FetchContentButtonProps> = ({ disabled = fals
             });
             console.log('Response received:', response);
             console.log('Response data:', response.data);
-            // console.log('Response data.data:', response.data.data);
 
             if (response.data.success) {
                 toast({
@@ -49,8 +48,8 @@ const FetchContentButton: React.FC<FetchContentButtonProps> = ({ disabled = fals
                 });
             } else {
                 toast({
-                    title: "Warning",
-                    description: response.data.message || "No new content found",
+                    title: "No new content",
+                    description: response.data.message || "No new content found. Try again later or add more topics of interest.",
                     variant: "default",
                 });
             }
