@@ -42,14 +42,14 @@ const FetchContentButton: React.FC<FetchContentButtonProps> = ({ disabled = fals
 
             if (response.data.success) {
                 toast({
-                    title: "Content refreshed",
-                    description: `Found ${response.data.data?.length || 0} new items based on your topics`,
+                    title: "Smart content refresh",
+                    description: `Found ${response.data.data?.length || 0} relevant items using AI-assisted search`,
                     variant: "success",
                 });
             } else {
                 toast({
                     title: "No new content",
-                    description: response.data.message || "No new content found. Try again later or add more topics of interest.",
+                    description: response.data.message || "No new relevant content found. Try again later or adjust your topics of interest.",
                     variant: "default",
                 });
             }
