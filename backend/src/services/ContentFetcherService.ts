@@ -7,10 +7,16 @@ import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 import { getTranscriptText } from './youtubeService';
 import { scrapeArticle } from './websiteService';
+import { OpenAI } from 'openai';
 // Configure with your API keys in environment variables
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
+// Initialize OpenAI client configured to use GPT-4o mini
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
 export interface ContentItem {
     title: string;
@@ -20,37 +26,153 @@ export interface ContentItem {
     sourceType: 'article' | 'youtube' | 'podcast' | 'document';
 }
 
-/**
- * Fetches relevant web articles using Google Custom Search API
- * Prioritizes relevance over recency
- */
-export async function fetchLatestArticles(topic: string, maxResults: number = 5): Promise<ContentItem[]> {
-    try {
-        // Request more results than needed to account for filtering out duplicates
-        const requestedResults = Math.min(maxResults * 2, 10); // API limit is 10
+// Time interval mapping (in days)
+const frequencyIntervals: { [key: string]: number } = {
+    'daily': 1,
+    'weekly': 7,
+    'biweekly': 14,
+    'monthly': 30
+};
 
-        const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-            params: {
-                key: GOOGLE_API_KEY,
-                cx: GOOGLE_SEARCH_ENGINE_ID,
-                q: topic,
-                num: requestedResults,
-                // Removed dateRestrict and sort parameters to prioritize relevance
-            },
+/**
+ * Generates multiple search queries for a given topic using GPT-4o mini
+ */
+async function generateTopicQueries(topic: string): Promise<string[]> {
+    try {
+        const prompt = `You are a search query generator. For the topic "${topic}", generate 3 different search queries that would help find recent, relevant information. 
+            Each query should be specific enough to find distinct aspects of the topic.
+            Return only the search queries as a JSON array with no additional text.`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini", // Use GPT-4o mini
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
         });
 
-        if (!response.data.items || response.data.items.length === 0) {
-            logger.info(`No results found for topic: ${topic}`);
-            return [];
+        const responseText = completion.choices[0].message.content;
+        if (!responseText) return [topic];
+
+        const parsedResponse = JSON.parse(responseText);
+        return Array.isArray(parsedResponse.queries) ?
+            parsedResponse.queries :
+            [topic];
+    } catch (error) {
+        logger.error(`Error generating queries for topic "${topic}":`, error);
+        return [topic]; // Fallback to just using the topic itself
+    }
+}
+
+/**
+ * Filter search results using GPT-4o mini to remove irrelevant or outdated content
+ */
+async function filterResultsWithAI(items: ContentItem[], topic: string, frequency: string): Promise<ContentItem[]> {
+    try {
+        if (items.length === 0) return [];
+
+        // Create a JSON string of the items with relevant fields
+        const itemsJson = JSON.stringify(items.map(item => ({
+            title: item.title,
+            snippet: item.snippet,
+            publishedAt: item.publishedAt,
+            url: item.url,
+            sourceType: item.sourceType
+        })));
+
+        const prompt = `You are a content curator for the topic "${topic}". 
+            Review the following search results and identify which ones are:
+            1. Actually relevant to the topic "${topic}"
+            2. Contain fresh information (published within the last ${frequencyIntervals[frequency] || 7} days if date is available)
+            3. Not duplicative of other results
+
+            Content items: ${itemsJson}
+
+            Return a JSON array of indices (0-based) of items that meet ALL these criteria, with no additional text.
+            Example: {"selected_indices": [0, 2, 5]}`;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini", // Use GPT-4o mini
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" },
+            temperature: 0.1,
+        });
+
+        const responseText = completion.choices[0].message.content;
+        if (!responseText) return items;
+
+        const parsedResponse = JSON.parse(responseText);
+        const selectedIndices = parsedResponse.selected_indices || [];
+
+        if (!Array.isArray(selectedIndices) || selectedIndices.length === 0) {
+            return items; // If no selection or error, return all items
         }
 
-        return response.data.items.map((item: any) => ({
-            title: item.title,
-            url: item.link,
-            snippet: item.snippet,
-            publishedAt: item.pagemap?.metatags?.[0]?.['article:published_time'] || new Date().toISOString(),
-            sourceType: 'article',
-        }));
+        // Filter to only include selected items
+        return selectedIndices
+            .filter(index => index >= 0 && index < items.length)
+            .map(index => items[index]);
+
+    } catch (error) {
+        logger.error(`Error filtering results with AI for topic "${topic}":`, error);
+        return items; // Return original items if filtering fails
+    }
+}
+
+/**
+ * Fetches relevant web articles using Google Custom Search API
+ * Prioritizes relevance over recency and uses time filtering
+ */
+export async function fetchLatestArticles(topic: string, maxResults: number = 5, frequency: string = 'weekly'): Promise<ContentItem[]> {
+    try {
+        // Determine time range based on frequency
+        const daysInterval = frequencyIntervals[frequency] || 7;
+
+        // Format the date for 'dateRestrict' parameter
+        const dateRestrict = `d${daysInterval}`;
+
+        // Request more results than needed to account for filtering
+        const requestedResults = Math.min(maxResults * 3, 10); // API limit is 10
+
+        // Generate multiple search queries
+        const searchQueries = await generateTopicQueries(topic);
+        let allResults: ContentItem[] = [];
+
+        // Execute each search query
+        for (const query of searchQueries) {
+            // Get recent content first
+            const recentResponse = await axios.get('https://www.googleapis.com/customsearch/v1', {
+                params: {
+                    key: GOOGLE_API_KEY,
+                    cx: GOOGLE_SEARCH_ENGINE_ID,
+                    q: query,
+                    num: requestedResults,
+                    dateRestrict: dateRestrict,
+                    sort: 'date', // Focus on recent items
+                },
+            });
+
+            if (recentResponse.data.items && recentResponse.data.items.length > 0) {
+                const recentItems = recentResponse.data.items.map((item: any) => ({
+                    title: item.title,
+                    url: item.link,
+                    snippet: item.snippet,
+                    publishedAt: item.pagemap?.metatags?.[0]?.['article:published_time'] || new Date().toISOString(),
+                    sourceType: 'article',
+                }));
+
+                allResults = [...allResults, ...recentItems];
+            }
+        }
+
+        // If we have enough results, filter with AI
+        if (allResults.length > 0) {
+            allResults = await filterResultsWithAI(allResults, topic, frequency);
+        }
+
+        logger.info(`Fetched ${allResults.length} filtered articles for topic "${topic}" with frequency ${frequency}`);
+
+        // Return top results after filtering
+        return allResults.slice(0, maxResults);
     } catch (error) {
         logger.error(`Error fetching articles for topic "${topic}":`, error);
         return [];
@@ -59,37 +181,61 @@ export async function fetchLatestArticles(topic: string, maxResults: number = 5)
 
 /**
  * Fetches relevant YouTube videos based on a topic
- * Prioritizes relevance over recency
+ * Uses GPT-4o mini for query generation and filtering
  */
-export async function fetchLatestVideos(topic: string, maxResults: number = 5): Promise<ContentItem[]> {
+export async function fetchLatestVideos(topic: string, maxResults: number = 5, frequency: string = 'weekly'): Promise<ContentItem[]> {
     try {
-        // Request more results than needed to account for filtering out duplicates
-        const requestedResults = Math.min(maxResults * 2, 10); // API limit is usually 50, but we'll use 10
+        // Determine time range based on frequency
+        const daysInterval = frequencyIntervals[frequency] || 7;
 
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-            params: {
-                key: YOUTUBE_API_KEY,
-                q: topic,
-                part: 'snippet',
-                type: 'video',
-                order: 'relevance', // Changed from 'date' to 'relevance'
-                maxResults: requestedResults,
-                // Removed publishedAfter to avoid time restriction
-            },
-        });
+        // Calculate the publishedAfter date
+        const publishedAfter = new Date();
+        publishedAfter.setDate(publishedAfter.getDate() - daysInterval);
+        const publishedAfterIso = publishedAfter.toISOString();
 
-        if (!response.data.items || response.data.items.length === 0) {
-            logger.info(`No YouTube videos found for topic: ${topic}`);
-            return [];
+        // Request more results than needed for filtering
+        const requestedResults = Math.min(maxResults * 3, 10);
+
+        // Generate multiple search queries
+        const searchQueries = await generateTopicQueries(topic);
+        let allResults: ContentItem[] = [];
+
+        // Execute each search query
+        for (const query of searchQueries) {
+            const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+                params: {
+                    key: YOUTUBE_API_KEY,
+                    q: query,
+                    part: 'snippet',
+                    type: 'video',
+                    order: 'date', // Focus on recent videos
+                    publishedAfter: publishedAfterIso,
+                    maxResults: requestedResults,
+                },
+            });
+
+            if (response.data.items && response.data.items.length > 0) {
+                const videoItems = response.data.items.map((item: any) => ({
+                    title: item.snippet.title,
+                    url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+                    snippet: item.snippet.description,
+                    publishedAt: item.snippet.publishedAt,
+                    sourceType: 'youtube',
+                }));
+
+                allResults = [...allResults, ...videoItems];
+            }
         }
 
-        return response.data.items.map((item: any) => ({
-            title: item.snippet.title,
-            url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-            snippet: item.snippet.description,
-            publishedAt: item.snippet.publishedAt,
-            sourceType: 'youtube',
-        }));
+        // If we have enough results, filter with AI
+        if (allResults.length > 0) {
+            allResults = await filterResultsWithAI(allResults, topic, frequency);
+        }
+
+        logger.info(`Fetched ${allResults.length} filtered videos for topic "${topic}" with frequency ${frequency}`);
+
+        // Return top results after filtering
+        return allResults.slice(0, maxResults);
     } catch (error) {
         logger.error(`Error fetching YouTube videos for topic "${topic}":`, error);
         return [];
@@ -100,10 +246,10 @@ export async function fetchLatestVideos(topic: string, maxResults: number = 5): 
  * Combines and sorts results from both article and video searches
  * Ensures a balance between different content types
  */
-export async function searchContentByTopic(topic: string, maxResults: number = 3): Promise<ContentItem[]> {
+export async function searchContentByTopic(topic: string, maxResults: number = 3, frequency: string = 'weekly'): Promise<ContentItem[]> {
     const [articles, videos] = await Promise.all([
-        fetchLatestArticles(topic, maxResults),
-        fetchLatestVideos(topic, maxResults),
+        fetchLatestArticles(topic, maxResults, frequency),
+        fetchLatestVideos(topic, maxResults, frequency),
     ]);
 
     logger.info(`Found ${articles.length} articles and ${videos.length} videos for topic "${topic}"`);
@@ -310,12 +456,15 @@ export async function processContentItem(
  */
 export async function fetchAndProcessContentForUser(userId: string): Promise<any> {
     try {
-        // Get user's topics
+        // Get user's topics and frequency preference
         const user = await User.findById(userId);
 
         if (!user || !user.preferences.topics || user.preferences.topics.length === 0) {
             return { success: false, message: "No topics found for user" };
         }
+
+        // Get user's frequency preference (default to weekly)
+        const frequency = user.preferences.deliveryFrequency || 'weekly';
 
         const maxItemsPerTopic = Math.ceil(user.preferences.maxItemsPerNewsletter / user.preferences.topics.length);
         const requestItemsPerTopic = maxItemsPerTopic * 2; // Request more to ensure we have enough new content
@@ -325,8 +474,8 @@ export async function fetchAndProcessContentForUser(userId: string): Promise<any
 
         // Process each topic
         for (const topic of user.preferences.topics) {
-            // Search for content on this topic
-            const contentItems = await searchContentByTopic(topic, requestItemsPerTopic);
+            // Search for content on this topic - pass the user's frequency preference
+            const contentItems = await searchContentByTopic(topic, requestItemsPerTopic, frequency);
 
             // Filter out content that's already been processed for this user
             const newContentItems = await filterNewContent(userId, contentItems, maxItemsPerTopic);
