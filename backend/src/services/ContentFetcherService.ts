@@ -4,19 +4,45 @@ import Summary from '../models/Summary';
 import User from '../models/User';
 import { summarizeContent, detectTopics } from './SummaryService';
 import { logger } from '../utils/logger';
-import mongoose from 'mongoose';
 import { getTranscriptText } from './youtubeService';
 import { scrapeArticle } from './websiteService';
 import { OpenAI } from 'openai';
+import { BraveMCPClient } from './BraveMCPClient';
+
 // Configure with your API keys in environment variables
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
+
+export interface ContentItem {
+    title: string;
+    url: string;
+    snippet: string;
+    publishedAt: string;
+    sourceType: 'article' | 'youtube' | 'podcast' | 'document';
+}
 // Initialize OpenAI client configured to use GPT-4o mini
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Initialize BraveMCPClient
+let braveMCPClient: BraveMCPClient | null = null;
+
+/**
+ * Initialize the Brave MCP client (call this during app startup)
+ */
+export async function initializeBraveMCPClient() {
+    try {
+        braveMCPClient = new BraveMCPClient();
+        // Connect to the TypeScript Brave MCP server
+        await braveMCPClient.connectToServer(process.env.BRAVE_MCP_SERVER_PATH || "./braveMcp/dist/index.js");
+        logger.info('Brave MCP Client initialized successfully');
+        return true;
+    } catch (error) {
+        logger.error('Failed to initialize Brave MCP Client:', error);
+        return false;
+    }
+}
 
 export interface ContentItem {
     title: string;
@@ -44,7 +70,7 @@ async function generateTopicQueries(topic: string): Promise<string[]> {
             Return only the search queries as a JSON array with no additional text.`;
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // Use GPT-4o mini
+            model: "gpt-4.1-nano", // Use GPT-4o mini
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
             temperature: 0.7,
@@ -91,7 +117,7 @@ async function filterResultsWithAI(items: ContentItem[], topic: string, frequenc
             Example: {"selected_indices": [0, 2, 5]}`;
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini", // Use GPT-4o mini
+            model: "gpt-4.1-nano", // Use GPT-4o mini
             messages: [{ role: "user", content: prompt }],
             response_format: { type: "json_object" },
             temperature: 0.1,
@@ -119,51 +145,80 @@ async function filterResultsWithAI(items: ContentItem[], topic: string, frequenc
 }
 
 /**
- * Fetches relevant web articles using Google Custom Search API
- * Prioritizes relevance over recency and uses time filtering
+ * Parses Brave search results into ContentItem format
+ */
+/**
+ * Parses Brave search results into ContentItem format
+ */
+function parseBraveSearchResults(rawResults: string): ContentItem[] {
+    try {
+        // The results appear to be in a structured format with numbered items
+        const items: ContentItem[] = [];
+
+        // Regular expression to match numbered items with links and descriptions
+        const itemRegex = /\d+\.\s+\*\*\[(.*?)\]\((https?:\/\/[^\s\)]+)\)\*\*\s+-?\s*(.*?)(?=\n\d+\.|\n\n|$)/gs;
+
+        let match;
+        while ((match = itemRegex.exec(rawResults)) !== null) {
+            const title = match[1]?.trim() || '';
+            const url = match[2]?.trim() || '';
+            const snippet = match[3]?.trim() || '';
+
+            if (url && title) {
+                items.push({
+                    title,
+                    url,
+                    snippet,
+                    publishedAt: new Date().toISOString(),
+                    sourceType: 'article' as 'article'
+                });
+            }
+        }
+
+        logger.info(`Successfully parsed ${items.length} items from Brave search results`);
+        return items;
+    } catch (error) {
+        logger.error('Error parsing Brave search results:', error);
+        return [];
+    }
+}
+/**
+ * Fetches relevant web articles using Brave Search MCP
  */
 export async function fetchLatestArticles(topic: string, maxResults: number = 5, frequency: string = 'weekly'): Promise<ContentItem[]> {
     try {
-        // Determine time range based on frequency
-        const daysInterval = frequencyIntervals[frequency] || 7;
-
-        // Format the date for 'dateRestrict' parameter
-        const dateRestrict = `d${daysInterval}`;
-
-        // Request more results than needed to account for filtering
-        const requestedResults = Math.min(maxResults * 3, 10); // API limit is 10
+        if (!braveMCPClient) {
+            logger.error('Brave MCP Client not initialized');
+            return [];
+        }
 
         // Generate multiple search queries
         const searchQueries = await generateTopicQueries(topic);
         let allResults: ContentItem[] = [];
 
-        // Execute each search query
+        // Request more results than needed to account for filtering
+        const requestedResults = Math.min(maxResults * 3, 20); // Requesting more for better filtering
+
+        // Execute each search query using Brave MCP
         for (const query of searchQueries) {
-            // Get recent content first
-            const recentResponse = await axios.get('https://www.googleapis.com/customsearch/v1', {
-                params: {
-                    key: GOOGLE_API_KEY,
-                    cx: GOOGLE_SEARCH_ENGINE_ID,
-                    q: query,
-                    num: requestedResults,
-                    dateRestrict: dateRestrict,
-                    sort: 'date', // Focus on recent items
-                },
-            });
+            try {
+                // Add time period to the query based on frequency
+                const daysInterval = frequencyIntervals[frequency] || 7;
+                const timeQuery = `${query} after:${daysInterval}d`;
 
-            if (recentResponse.data.items && recentResponse.data.items.length > 0) {
-                const recentItems = recentResponse.data.items.map((item: any) => ({
-                    title: item.title,
-                    url: item.link,
-                    snippet: item.snippet,
-                    publishedAt: item.pagemap?.metatags?.[0]?.['article:published_time'] || new Date().toISOString(),
-                    sourceType: 'article',
-                }));
+                // Use the Brave web search tool through MCP
+                const searchResults = await braveMCPClient.processQuery(
+                    `Search for recent articles about "${timeQuery}"`,
+                );
 
-                allResults = [...allResults, ...recentItems];
+                // Parse the results into ContentItem format
+                const items = parseBraveSearchResults(searchResults);
+                allResults = [...allResults, ...items];
+            } catch (error) {
+                logger.error(`Error executing Brave search for query "${query}":`, error);
             }
         }
-
+        logger.info(`Fetched ${allResults.length} articles for topic "${topic}"`);
         // If we have enough results, filter with AI
         if (allResults.length > 0) {
             allResults = await filterResultsWithAI(allResults, topic, frequency);
@@ -515,3 +570,80 @@ export async function fetchAndProcessContentForUser(userId: string): Promise<any
         return { success: false, message: "Error processing content" };
     }
 }
+
+/**
+ * Shutdown function to clean up resources (call this during app shutdown)
+ */
+export async function shutdownBraveMCPClient() {
+    if (braveMCPClient) {
+        try {
+            await braveMCPClient.cleanup();
+            braveMCPClient = null;
+            logger.info('Brave MCP Client shutdown complete');
+        } catch (error) {
+            logger.error('Error during Brave MCP Client shutdown:', error);
+        }
+    }
+}
+
+
+// /**
+//  * Diagnostic function to help identify why no articles are being fetched
+//  */
+// export async function diagnoseArticleFetchingIssue(topic: string, frequency: string = 'weekly'): Promise<void> {
+//     try {
+//         // Step 1: Check if MCP client is initialized
+//         if (!braveMCPClient) {
+//             console.error('ISSUE: Brave MCP Client not initialized');
+//             return;
+//         }
+//         console.log('✓ Brave MCP Client is initialized');
+
+//         // Step 2: Generate search queries and log them
+//         const searchQueries = await generateTopicQueries(topic);
+//         console.log(`Generated ${searchQueries.length} search queries:`, searchQueries);
+
+//         // Step 3: Check each query individually
+//         for (const query of searchQueries) {
+//             try {
+//                 // Add time period to the query based on frequency
+//                 const daysInterval = frequencyIntervals[frequency] || 7;
+//                 const timeQuery = `${query} after:${daysInterval}d`;
+//                 console.log(`Processing query: "${timeQuery}"`);
+
+//                 // Test direct MCP client raw response
+//                 const searchResults = await braveMCPClient.processQuery(
+//                     `Search for recent articles about "${timeQuery}"`,
+//                 );
+//                 console.log('Raw search results:', searchResults);
+
+//                 // Test parsing function
+//                 const parsedItems = parseBraveSearchResults(searchResults);
+//                 console.log(`Parsed ${parsedItems.length} items from search results`);
+
+//                 // If we have no parsed items, analyze the raw response
+//                 if (parsedItems.length === 0) {
+//                     console.error('ISSUE: No items parsed from search results. Check parseBraveSearchResults function.');
+//                     console.log('Search results type:', typeof searchResults);
+//                     if (typeof searchResults === 'string') {
+//                         // Log the first 500 characters to see the format
+//                         console.log('Search results preview:', searchResults.substring(0, 500));
+//                     }
+//                 }
+//             } catch (error) {
+//                 console.error(`Error processing query "${query}":`, error);
+//             }
+//         }
+
+//         // Step 4: Test a direct simple query to verify MCP connection
+//         try {
+//             const testResult = await braveMCPClient.processQuery('What is the weather in New York?');
+//             console.log('Test query result:', testResult);
+//         } catch (error) {
+//             console.error('ISSUE: Basic MCP query failed. Connection issue likely:', error);
+//         }
+
+//     } catch (error) {
+//         console.error('Error during diagnosis:', error);
+//     }
+// }
