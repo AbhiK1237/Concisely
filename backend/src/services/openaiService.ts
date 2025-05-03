@@ -9,8 +9,8 @@ dotenv.config();
 
 console.log("🔑 API Key");
 const openai = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY ,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  apiKey: process.env.OPENAI_API_KEY,
+
 });
 
 export const generateSummary = async (
@@ -50,7 +50,7 @@ export const generateSummary = async (
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-flash",
+      model: "gpt-4.1-nano",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: prompt }
@@ -69,7 +69,7 @@ export const extractTopics = async (content: string): Promise<string[]> => {
     const prompt = `Extract 2-5 main topics or categories from the following content. Return only a comma-separated list of topics, with no additional text:\n\n${content}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4.1-nano",
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -89,7 +89,7 @@ export const generateNewsletter = async (
     const prompt = `Create a well-structured newsletter based on the following summaries. The newsletter should focus on these topics: ${topicsText}.\n\nContent to include:\n${combinedContent}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-flash", // or whichever model you prefer to be consistent
+      model: "gpt-4.1-nano", // or whichever model you prefer to be consistent
       messages: [
         { role: "system", content: "You are a professional newsletter editor." },
         { role: "user", content: prompt }
