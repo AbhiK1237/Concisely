@@ -8,6 +8,11 @@ import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 // Import the email service
 import { emailService } from '../services/emailService';
+interface AuthRequest extends Request {
+  user?: {
+    _id: mongoose.Types.ObjectId;
+  };
+}
 
 // Schedule a newsletter for future delivery
 export const scheduleNewsletter = async (req: Request, res: Response): Promise<void> => {
@@ -49,7 +54,6 @@ export const scheduleNewsletter = async (req: Request, res: Response): Promise<v
     }
   }
 };
-
 
 // Send newsletter to users
 export const sendNewsletter = async (req: Request, res: Response): Promise<void> => {
@@ -163,6 +167,67 @@ export const getNewsletterById = async (req: Request, res: Response): Promise<vo
     res.json(apiResponse.success(newsletter));
   } catch (error) {
     logger.error(`Error fetching newsletter: ${error}`);
+    if (error instanceof Error) {
+      res.status(500).json(apiResponse.error(error.message));
+    } else {
+      res.status(500).json(apiResponse.error('An unknown error occurred'));
+    }
+  }
+};
+
+// Get the latest newsletter for the current user
+export const getLatestNewsletter = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    // Get the userId from the authenticated user
+    const userId = req.user?._id;
+
+    if (!userId) {
+      res.status(401).json(apiResponse.error('User not authenticated'));
+      return;
+    }
+
+    // Find the latest sent newsletter that includes the user's topics
+    // First get the user's topics
+    const user = await User.findById(userId);
+
+    if (!user || !user.preferences || !user.preferences.topics) {
+      res.status(404).json(apiResponse.error('User preferences not found'));
+      return;
+    }
+
+    const userTopics = user.preferences.topics;
+
+    // Find newsletters that match the user's topics and are in sent status
+    // Sort by sentAt date in descending order to get the most recent one
+    const newsletter = await Newsletter.findOne({
+      topics: { $in: userTopics },
+      status: 'sent',
+      sentAt: { $ne: null }
+    })
+      .sort({ sentAt: -1 })
+      .populate('summaries');
+
+    if (!newsletter) {
+      // If no sent newsletter found, try to find a scheduled one
+      const scheduledNewsletter = await Newsletter.findOne({
+        topics: { $in: userTopics },
+        status: 'scheduled'
+      })
+        .sort({ scheduledDate: -1 })
+        .populate('summaries');
+
+      if (!scheduledNewsletter) {
+        res.status(404).json(apiResponse.error('No newsletters found'));
+        return;
+      }
+
+      res.json(apiResponse.success(scheduledNewsletter));
+      return;
+    }
+
+    res.json(apiResponse.success(newsletter));
+  } catch (error) {
+    logger.error(`Error fetching latest newsletter: ${error}`);
     if (error instanceof Error) {
       res.status(500).json(apiResponse.error(error.message));
     } else {
