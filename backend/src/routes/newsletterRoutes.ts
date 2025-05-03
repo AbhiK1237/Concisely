@@ -5,7 +5,8 @@ import {
   getAllNewsletters,
   getNewsletterById,
   deleteNewsletter,
-  scheduleNewsletter,  // Add this import
+  scheduleNewsletter,
+  getLatestNewsletter, // Add this import
 } from '../controllers/newsletterController';
 import { protect } from '../middleware/auth';
 
@@ -21,10 +22,13 @@ router.post('/', createNewsletter);
 router.post('/:newsletterId/send', sendNewsletter);
 
 // Schedule a newsletter
-router.post('/:id/schedule', scheduleNewsletter);  // Add this route
+router.post('/:id/schedule', scheduleNewsletter);
 
 // Get all newsletters
 router.get('/', getAllNewsletters);
+
+// Get latest newsletter
+router.get('/latest', getLatestNewsletter); // Add this new route
 
 // Get/delete a specific newsletter
 router.route('/:id')
