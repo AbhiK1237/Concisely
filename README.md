@@ -1,6 +1,6 @@
 # Concisely
 
-Concisely is an AI-powered content summarization platform that helps users save time by generating concise summaries of various content types including articles, YouTube videos, podcasts, and documents.
+Concisely is an AI-powered content summarization and newsletter platform that helps users stay informed by generating concise summaries of various content types and delivering personalized newsletters based on topics of interest.
 
 ![Concisely Logo](./frontend/public/logo.png)
 
@@ -10,30 +10,45 @@ Concisely is an AI-powered content summarization platform that helps users save 
   - Articles/Web pages
   - YouTube videos
   - Podcasts
-  - Documents (PDF, DOC, etc.)
+  - Documents (PDF)
 
-- **User Management**: Secure authentication system with protected routes
+- **Smart Content Discovery**: Automatically find and summarize relevant content based on your topics of interest
+
+- **Personalized Newsletters**: 
+  - Receive curated newsletters based on your preferred topics
+  - Schedule delivery frequency (daily, weekly, monthly)
+  - Beautiful markdown-to-HTML formatting for better readability
+
+- **User Management**: 
+  - Secure authentication system with protected routes
+  - Customizable topic preferences
+  - Delivery frequency settings
 
 - **Summary Management**:
   - Save summaries for future reference
   - Rate summaries as helpful or not helpful
   - Browse summaries by topic
 
-- **Weekly Digests**: Receive curated weekly newsletters based on topics of interest
-
 ## Project Structure
 
 The project is divided into two main parts:
 
 ### Frontend
-- Built with React 19, TypeScript, and Vite
-- Utilizes Tailwind CSS for styling with Shadcn UI components
+- Built with React 19 and TypeScript
+- Vite for fast development and building
+- Tailwind CSS with shadcn/ui-inspired components
 - Responsive design for all devices
+- Showdown for markdown-to-HTML conversion
 
 ### Backend
-- Node.js with Express.js
+- Node.js with Express.js and TypeScript
 - MongoDB for data storage
-- AI integrations with Gemini API for summarization
+- Multi-AI integration:
+  - Gemini API for summarization
+  - OpenAI for content analysis and topic detection
+- Brave Search API through Model Context Protocol (MCP) for content discovery
+- Puppeteer for web scraping
+- Nodemailer for email delivery
 
 ## Getting Started
 
@@ -41,7 +56,11 @@ The project is divided into two main parts:
 
 - Node.js 18+ 
 - MongoDB instance
-- API key for Gemini (for AI summarization)
+- API keys for:
+  - Gemini (for AI summarization)
+  - OpenAI (for topic detection)
+  - Brave Search (for content discovery)
+- Email service credentials (for newsletter delivery)
 
 ### Installation
 
@@ -60,6 +79,14 @@ The project is divided into two main parts:
    # MONGODB_URI=your_mongodb_uri
    # JWT_SECRET=your_jwt_secret
    # GEMINI_API_KEY=your_gemini_api_key
+   # OPENAI_API_KEY=your_openai_api_key
+   # BRAVE_API_KEY=your_brave_api_key
+   # YOUTUBE_API_KEY=your_youtube_api_key
+   # EMAIL_HOST=your_email_host
+   # EMAIL_PORT=your_email_port
+   # EMAIL_USER=your_email_user
+   # EMAIL_PASSWORD=your_email_password
+   # EMAIL_SECURE=true_or_false
    npm run dev
    ```
 
@@ -90,9 +117,19 @@ The project is divided into two main parts:
 
 ### User Management
 - `GET /api/users/me` - Get current user profile
-- `GET /api/users/saved` - Get saved summaries
-- `POST /api/users/save/:summaryId` - Save a summary
-- `DELETE /api/users/unsave/:summaryId` - Unsave a summary
+- `PUT /api/users/preferences` - Update user preferences
+- `GET /api/users/saved-summaries` - Get saved summaries
+- `POST /api/users/saved-summaries/:summaryId` - Save a summary
+- `DELETE /api/users/saved-summaries/:summaryId` - Unsave a summary
+
+### Content & Newsletters
+- `POST /api/content/fetch` - Fetch content based on user preferences
+- `POST /api/content/newsletter` - Generate a newsletter
+- `GET /api/newsletters` - Get all newsletters
+- `GET /api/newsletters/:id` - Get a specific newsletter
+- `GET /api/newsletters/latest` - Get the latest newsletter
+- `POST /api/newsletters/:id/schedule` - Schedule a newsletter
+- `POST /api/newsletters/:newsletterId/send` - Send a newsletter
 
 ## Technologies Used
 
@@ -101,16 +138,23 @@ The project is divided into two main parts:
 - TypeScript
 - Vite
 - Tailwind CSS
-- Shadcn UI
+- shadcn/ui-inspired components
 - React Router
 - Axios
+- Showdown (markdown conversion)
 
 ### Backend
 - Node.js
 - Express.js
+- TypeScript
 - MongoDB with Mongoose
 - JSON Web Tokens (JWT)
 - Gemini AI API
+- OpenAI API
+- Brave Search API with MCP
+- Puppeteer (for web scraping)
+- Nodemailer (for email delivery)
+- Cron jobs (for scheduling)
 - Multer (for file uploads)
 
 ## Contributing
@@ -128,5 +172,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Thanks to all contributors who have helped shape this project
-- Shadcn UI for the beautiful component library
-- Gemini API for powering our AI summarization
+- Shadcn UI for the beautiful component patterns
+- Gemini and OpenAI for powering our AI capabilities
+- Brave Search for content discovery
