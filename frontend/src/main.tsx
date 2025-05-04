@@ -11,10 +11,9 @@ import TopicSelection from './pages/Selection'
 import ContentSourceInput from './pages/Source'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import DigestPage from './pages/DigestPage';
 import NewsletterPage from './pages/NewsletterPage';
 // In your routes configuration:
-<Route path="/digest/:summaryIds" element={<DigestPage />} />
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
