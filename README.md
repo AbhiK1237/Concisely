@@ -154,6 +154,7 @@ The project is divided into two main parts:
 - Brave Search API with MCP
 - Puppeteer (for web scraping)
 - Nodemailer (for email delivery)
+- Sendgrid for sending and managing emails
 - Cron jobs (for scheduling)
 - Multer (for file uploads)
 
