@@ -7,13 +7,10 @@ dotenv.config();
 
 // Initialize OpenAI client configured to use Gemini API
 const openai = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * Summarizes content using Gemini API through OpenAI SDK
- */
+// Function to generate a summary of the provided content
 export async function summarizeContent(content: string, maxLength: string = 'medium'): Promise<string> {
   try {
     // Define summary length in tokens based on preference
@@ -24,7 +21,7 @@ export async function summarizeContent(content: string, maxLength: string = 'med
     }[maxLength] || 300;
 
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-flash", // Using Gemini model
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
@@ -48,13 +45,11 @@ export async function summarizeContent(content: string, maxLength: string = 'med
   }
 }
 
-/**
- * Detects topics in content using Gemini API
- */
+
 export async function detectTopics(content: string): Promise<string[]> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gemini-2.0-flash", // Using Gemini model
+      model: "gpt-4.1-mini",
       messages: [
         {
           role: "system",
