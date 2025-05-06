@@ -36,18 +36,19 @@ export const generateSummary = async (
 
     switch (type) {
       case 'youtube':
-        prompt = `Summarize this YouTube video transcript in approximately ${contentLength} words:\n\n${content}`;
+        prompt = `You're a helpful assistant. Summarize the following YouTube video transcript in about ${contentLength} words. Make the summary simple, clear, and easy for anyone to understand. Focus on the main points, explain technical terms if any, and write in a friendly, engaging tone.\n\nTranscript:\n${content}`;
         break;
       case 'podcast':
-        prompt = `Summarize this podcast transcript in approximately ${contentLength} words:\n\n${content}`;
+        prompt = `Act as a friendly and concise assistant. Summarize this podcast transcript in around ${contentLength} words. Make the explanation easy to follow, simplify complex ideas, and ensure a natural, conversational tone that matches the style of a podcast listener summary.\n\nTranscript:\n${content}`;
         break;
       case 'document':
-        prompt = `Summarize this document in approximately ${contentLength} words:\n\n${content}`;
+        prompt = `Please summarize this document clearly and simply in approximately ${contentLength} words. Ensure the key ideas are captured and explained in an easy-to-understand manner. Use a professional but accessible tone, avoiding jargon unless necessary, and provide a friendly summary suitable for someone unfamiliar with the content.\n\nDocument:\n${content}`;
         break;
       default: // article
-        prompt = `Summarize this article in approximately ${contentLength} words:\n\n${content}`;
+        prompt = `Summarize the following article in around ${contentLength} words. Make it easy to read, friendly in tone, and highlight the key takeaways in a way that's engaging and approachable for a general audience. Avoid complex terms unless you explain them.\n\nArticle:\n${content}`;
         break;
     }
+
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-nano",
@@ -69,7 +70,7 @@ export const extractTopics = async (content: string): Promise<string[]> => {
     const prompt = `Extract 2-5 main topics or categories from the following content. Return only a comma-separated list of topics, with no additional text:\n\n${content}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
+      model: "gpt-4.1-mini",
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -89,7 +90,7 @@ export const generateNewsletter = async (
     const prompt = `Create a well-structured newsletter based on the following summaries. The newsletter should focus on these topics: ${topicsText}.\n\nContent to include:\n${combinedContent}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-nano", // or whichever model you prefer to be consistent
+      model: "gpt-4.1-mini", // or whichever model you prefer to be consistent
       messages: [
         { role: "system", content: "You are a professional newsletter editor." },
         { role: "user", content: prompt }
