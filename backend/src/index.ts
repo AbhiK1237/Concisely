@@ -6,10 +6,7 @@ import { initScheduler } from './services/newsletterScheduler';
 import { scheduleContentAndNewsletters } from './services/contentScheduler';
 import { initializeBraveMCPClient, shutdownBraveMCPClient } from './services/ContentFetcherService';
 import { logger } from './utils/logger';
-// import { diagnoseArticleFetchingIssue } from './services/ContentFetcherService';
-// Load environment variables
 dotenv.config();
-
 const PORT = process.env.PORT || 5001;
 console.log("PORT from env:", process.env.PORT);
 
@@ -32,12 +29,6 @@ initializeBraveMCPClient()
   .catch(err => {
     logger.error('Error initializing Brave MCP Client:', err);
   });
-
-// In your main code or a separate script:
-// const topic = "artificial intelligence";
-// diagnoseArticleFetchingIssue(topic)
-//   .then(() => console.log('Diagnosis complete'))
-//   .catch(err => console.error('Error running diagnosis:', err));
 
 // Start server
 app.listen(PORT, () => {
