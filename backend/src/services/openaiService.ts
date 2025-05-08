@@ -3,11 +3,6 @@ import dotenv from 'dotenv';
 import '../utils/loadEnv';
 
 dotenv.config();
-
-// console.log("🔑 API Key:", process.env.GEMINI_API_KEY);
-
-
-console.log("🔑 API Key");
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 
@@ -24,19 +19,19 @@ export const generateSummary = async (
 
     switch (length) {
       case 'short':
-        contentLength = 150;
+        contentLength = 200;
         break;
       case 'long':
-        contentLength = 500;
+        contentLength = 700;
         break;
       default: // medium
-        contentLength = 300;
+        contentLength = 400;
         break;
     }
 
     switch (type) {
       case 'youtube':
-        prompt = `You're a helpful assistant. Summarize the following YouTube video transcript in about ${contentLength} words. Make the summary simple, clear, and easy for anyone to understand. Focus on the main points, explain technical terms if any, and write in a friendly, engaging tone.\n\nTranscript:\n${content}`;
+        prompt = `You're a helpful Teaching/explainer assistant.your job is to analyse the transcript,find out what kind of topic it is and Summarize the following YouTube video transcript in about ${contentLength} words.If the transcript is in some other langugage than english, make sure you understand it properly and give the response in english. Make the summary simple, clear, and easy for anyone to understand while covering all the points.If there are any formulas important rules,techiques make sure you cover them all. Focus on the main points, explain technical terms if any, and write in a friendly, engaging tone.\n\nTranscript:\n${content}`;
         break;
       case 'podcast':
         prompt = `Act as a friendly and concise assistant. Summarize this podcast transcript in around ${contentLength} words. Make the explanation easy to follow, simplify complex ideas, and ensure a natural, conversational tone that matches the style of a podcast listener summary.\n\nTranscript:\n${content}`;
@@ -53,9 +48,11 @@ export const generateSummary = async (
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-nano",
       messages: [
-        { role: "system", content: "You are a helpful assistant." },
+        { role: "system", content: "You are a transcript summarizer assistant." },
         { role: "user", content: prompt }
       ],
+      temperature: 0.7,  // Controls randomness: lower is more deterministic
+      // max_tokens: 500
     });
 
     return completion.choices[0].message.content || '';
