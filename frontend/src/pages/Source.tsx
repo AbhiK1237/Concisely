@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Youtube, Rss, File, Globe, Loader2 } from "lucide-react";
+import { Youtube, Rss, File, Globe, Loader2, Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,7 @@ const ContentSourceInput = () => {
   const [file, setFile] = useState<File | null>(null);
   const { token } = useAuth();
   const { toast } = useToast();
+  const [collapsed, setCollapsed] = useState(false);
 
   type ResultType = { summary?: string; error?: string } | null;
   const [result, setResult] = useState<ResultType>(null);
@@ -43,7 +44,6 @@ const ContentSourceInput = () => {
         const fileName = file.name;
         const titleFromFileName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
         formData.append('title', titleFromFileName);
-
 
         response = await axios.post(`${API_URL}/summaries/document`, formData, {
           headers: {
@@ -98,6 +98,17 @@ const ContentSourceInput = () => {
     }
   };
 
+  const handleCopySummary = () => {
+    if (result?.summary) {
+      navigator.clipboard.writeText(result.summary);
+      toast({
+        title: "Copied!",
+        description: "Summary copied to clipboard.",
+        variant: "success",
+      });
+    }
+  };
+
   const getPlaceholder = () => {
     switch (activeTab) {
       case "article":
@@ -127,6 +138,25 @@ const ContentSourceInput = () => {
         return null;
     }
   };
+
+  // Utility to strip markdown bold/italic and convert to HTML
+  function formatSummaryToHtml(summary: string): string {
+    // Remove ** and __ for bold, * and _ for italic, but keep the text
+    let html = summary
+      .replace(/\*\*(.*?)\*\*/g, '<span class="font-semibold text-primary-700">$1</span>')
+      .replace(/__(.*?)__/g, '<span class="font-semibold text-primary-700">$1</span>')
+      .replace(/\*(.*?)\*/g, '<span class="italic text-primary-500">$1</span>')
+      .replace(/_(.*?)_/g, '<span class="italic text-primary-500">$1</span>');
+    // Convert line breaks to <br>
+    html = html.replace(/\n/g, "<br>");
+    return html;
+  }
+
+  // Show only the first 3 lines as preview if collapsed
+  function getPreview(summary: string): string {
+    const lines = summary.split('\n');
+    return lines.slice(0, 3).join(' ') + (lines.length > 3 ? ' ...' : '');
+  }
 
   return (
     <>
@@ -280,16 +310,87 @@ const ContentSourceInput = () => {
               </TabsContent>
             </Tabs>
 
+            {/* Enhanced summary result display with color and collapse/expand */}
             {result && !result.error && (
-              <div className="mt-6 p-4 border rounded-md bg-gray-50">
-                <h3 className="font-medium mb-2">Summary:</h3>
-                <p className="text-gray-700">{result.summary}</p>
+              <div className="mt-8 flex justify-center">
+                <Card className="w-full max-w-2xl shadow-lg border-0" style={{
+                  background: "linear-gradient(135deg, #f0f4ff 0%, #e0f7fa 100%)",
+                  boxShadow: "0 4px 24px 0 rgba(80, 120, 200, 0.10)"
+                }}>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="text-lg text-primary-800">Summary</CardTitle>
+                      <CardDescription className="text-primary-500 text-xs mt-1">
+                        AI-generated concise summary of your content
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCollapsed(c => !c)}
+                        className="hover:bg-primary/10"
+                        aria-label={collapsed ? "Expand summary" : "Collapse summary"}
+                      >
+                        {collapsed ? (
+                          <ChevronDown className="h-5 w-5 text-primary-700" />
+                        ) : (
+                          <ChevronUp className="h-5 w-5 text-primary-700" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleCopySummary}
+                        className="hover:bg-primary/10"
+                        aria-label="Copy summary"
+                      >
+                        <Copy className="h-5 w-5 text-primary-700" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className="prose prose-sm max-w-none text-gray-900 leading-relaxed whitespace-pre-line"
+                      style={{
+                        background: "rgba(255,255,255,0.85)",
+                        borderRadius: "0.5rem",
+                        padding: "1rem",
+                        color: "#1a237e"
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: collapsed
+                          ? formatSummaryToHtml(getPreview(result.summary!))
+                          : formatSummaryToHtml(result.summary!)
+                      }}
+                    />
+                    {collapsed && (
+                      <div className="text-xs text-primary-400 mt-2">
+                        (Preview only. Click expand to see full summary.)
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="pt-2 flex justify-end">
+                    <span className="text-xs text-primary-500">Powered by AI</span>
+                  </CardFooter>
+                </Card>
               </div>
             )}
 
+            {/* Error display */}
             {result && result.error && (
-              <div className="mt-6 p-4 border rounded-md bg-red-50 text-red-800">
-                {result.error}
+              <div className="mt-8 flex justify-center">
+                <Card className="w-full max-w-2xl border-0" style={{
+                  background: "linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%)",
+                  boxShadow: "0 4px 24px 0 rgba(200, 80, 80, 0.10)"
+                }}>
+                  <CardHeader>
+                    <CardTitle className="text-destructive text-base">Error</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-destructive">{result.error}</p>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </CardContent>
