@@ -181,14 +181,14 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-6 bg-gradient-to-b from-background to-muted">
+      <section className="py-20 px-6 bg-gradient-to-b from-background to-muted" style={{ backgroundImage: " linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)" }}>
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                Summarize content & stay informed in less time
+                Summarize content & <span className='text-red-500'>stay informed</span> in less time
               </h1>
-              <p className="text-lg text-muted-foreground max-w-md">
+              <p className="text-lg text-black max-w-md ">
                 Concisely uses AI to distill articles, videos, and podcasts into summaries you can quickly digest and share.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -203,7 +203,7 @@ export default function LandingPage() {
                   See how it works
                 </Button>
               </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4 text-sm text-black">
                 <div className="flex items-center">
                   <Clock className="mr-1 h-4 w-4" />
                   <span>Save time</span>
@@ -250,7 +250,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6" style={{ backgroundImage: " linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)" }}>
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">How Concisely Works</h2>
@@ -306,7 +306,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials/Social Proof */}
-      <section className="py-20 px-6 bg-muted">
+      <section className="py-20 px-6 bg-muted" style={{ backgroundImage: " linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)" }}>
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">What Our Users Say</h2>
