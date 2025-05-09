@@ -346,7 +346,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 bg-primary text-primary-foreground">
+      <section className="py-20 px-6 bg-primary text-primary-foreground" style={{ backgroundImage: " linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)" }}>
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to become more informed in less time?</h2>
           <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
@@ -367,7 +367,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 px-6">
+      <footer className="border-t py-12 px-6" >
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-2 mb-4 md:mb-0">
