@@ -310,8 +310,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pb-12">
+      <div className="absolute inset-0 bg-grid-pattern opacity-5 pointer-events-none"></div>
+
+      <div className="container mx-auto max-w-6xl py-8 px-4 relative">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Welcome back, {user?.name?.split(' ')[0] || 'User'}</h1>
           <p className="text-gray-500 mt-1">Your personalized content newsletter</p>
