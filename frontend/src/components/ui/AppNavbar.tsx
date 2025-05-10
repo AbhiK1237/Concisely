@@ -237,15 +237,6 @@ export function AppNavbar({ onToggleSidebar, sidebarOpen, onLogout, user }: AppN
                     </motion.div>
                 </Button>
 
-                <div className="border-l border-gray-100 pl-2 ml-2 hidden sm:block">
-                    <Button
-                        size="sm"
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-md hover:from-purple-700 hover:to-blue-700 text-white"
-                        onClick={handleCreateContent}
-                    >
-                        <Sparkles className="h-3 w-3 mr-1" /> New Content
-                    </Button>
-                </div>
             </div>
         </div>
     );
