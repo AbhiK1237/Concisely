@@ -319,7 +319,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pb-12 relative">
       <div style={dotPatternStyle}></div>
 
-      <div className="container mx-auto max-w-6xl py-8 px-4 relative z-10">
+      <div className="container mx-auto max-w-6xl py-8 px-4 relative ">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm text-sm font-medium shadow-sm mb-2">
