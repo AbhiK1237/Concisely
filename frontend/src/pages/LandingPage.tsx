@@ -232,8 +232,8 @@ export default function LandingPage() {
       <div style={{ backgroundImage: " linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)" }}>
         {/* Hero Section - Redesigned */}
         <section ref={heroRef} className="py-24 px-6 overflow-hidden relative">
-          <div className="absolute inset-0 overflow-hidden opacity-10">
-            <svg className="absolute left-0 top-0 h-full" width="100%" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+          <div className="absolute inset-0 w-full h-full overflow-hidden opacity-10">
+            <svg className="absolute left-0 top-0 w-full h-full" viewBox="0 0 800 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="hero-gradient" x1="50%" y1="0%" x2="50%" y2="100%">
                   <stop stopColor="#5000ca" stopOpacity="1" offset="0%"></stop>
@@ -388,7 +388,7 @@ export default function LandingPage() {
                 <div className="relative bg-white rounded-xl shadow-lg overflow-hidden transition-transform duration-300 group-hover:-translate-y-2 border border-gray-100">
                   <div className="absolute top-0 right-0 w-20 h-20 -mt-10 -mr-10 bg-purple-500/10 rounded-full"></div>
                   <div className="p-8">
-                    <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mb-6 relative">
+                    <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justifyCenter mb-6 relative">
                       <svg className="w-10 h-10 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 001.5 2.121m0 0a2.25 2.25 0 002.25 0m0 0a2.25 2.25 0 001.5-2.121M9.75 3.104A24.1 24.1 0 0119.5 3.5M5 14.5l6.83 3.94a2.245 2.245 0 002.34 0L21 14.5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                       </svg>
