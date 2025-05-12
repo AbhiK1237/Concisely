@@ -88,87 +88,228 @@ const formatNewsletterEmail = (newsletter: any): string => {
   const preprocessed = preprocessLLMContent(newsletter.content);
   const htmlContent = converter.makeHtml(preprocessed);
 
+  // Generate topic badges HTML
+  const topicBadges = newsletter.topics.map((topic: string, index: number) => {
+    // Create a different color for each badge based on index
+    const colors = [
+      { bg: '#f0ebfe', text: '#7c3aed', border: '#d8b4fe' }, // purple
+      { bg: '#e1f0ff', text: '#3b82f6', border: '#bfdbfe' }, // blue
+      { bg: '#eef2ff', text: '#4f46e5', border: '#c7d2fe' }, // indigo
+      { bg: '#fce7f3', text: '#db2777', border: '#fbcfe8' }, // pink
+      { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' }  // green/teal
+    ];
+    const colorIndex = index % colors.length;
+    const color = colors[colorIndex];
+
+    return `<span style="display: inline-block; padding: 4px 12px; margin: 0 6px 6px 0; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: ${color.bg}; color: ${color.text}; border: 1px solid ${color.border};">${topic}</span>`;
+  }).join('');
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <title>${newsletter.title}</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
         body {
-          font-family: Arial, sans-serif;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
           line-height: 1.6;
-          color: #333;
+          color: #374151;
+          max-width: 100%;
+          margin: 0;
+          padding: 0;
+          background-color: #f9fafb;
+        }
+        
+        .wrapper {
           max-width: 600px;
           margin: 0 auto;
-          padding: 20px;
+          padding: 0;
         }
-        h1 {
-          color: #444;
-          border-bottom: 1px solid #ddd;
-          padding-bottom: 10px;
+        
+        .container {
+          background-color: #ffffff;
+          border-radius: 16px;
+          overflow: hidden;
+          margin: 20px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         }
-        h2 {
-          color: #555;
-          margin-top: 25px;
+        
+        .header {
+          background: linear-gradient(to right, #f5f3ff, #ede9fe, #faf5ff);
+          padding: 30px 30px 25px;
+          border-bottom: 1px solid #f3f4f6;
         }
-        h3 {
-          color: #666;
+        
+        .title {
+          color: #4f46e5;
+          font-weight: 700;
+          font-size: 24px;
+          margin: 0 0 16px 0;
         }
+        
         .topics {
-          margin-bottom: 15px;
-          color: #666;
-          font-style: italic;
+          margin-bottom: 10px;
         }
-        .content {
-          margin-top: 20px;
+        
+        .topics-label {
+          display: block;
+          margin-bottom: 8px;
+          font-size: 14px;
+          color: #6b7280;
+          font-weight: 500;
         }
+        
+        .content-wrapper {
+          padding: 30px;
+          background-color: #ffffff;
+        }
+        
+        .content h2 {
+          color: #4f46e5;
+          font-weight: 600;
+          font-size: 20px;
+          margin-top: 28px;
+          margin-bottom: 16px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .content h3 {
+          color: #7c3aed;
+          font-weight: 600;
+          font-size: 18px;
+          margin-top: 24px;
+          margin-bottom: 12px;
+        }
+        
         .content ul, .content ol {
-          margin-left: 20px;
+          margin-left: 10px;
           padding-left: 15px;
         }
+        
         .content li {
-          margin-bottom: 5px;
+          margin-bottom: 8px;
         }
+        
         .content hr {
           border: 0;
           height: 1px;
-          background: #ddd;
+          background: #e5e7eb;
           margin: 25px 0;
         }
+        
         .content blockquote {
-          border-left: 3px solid #ddd;
-          padding-left: 10px;
-          color: #666;
-          margin-left: 0;
+          border-left: 3px solid #8b5cf6;
+          padding: 12px 20px;
+          background-color: #f5f3ff;
+          margin: 20px 0;
+          border-radius: 0 8px 8px 0;
+          color: #6b7280;
         }
+        
         .content strong, .content b {
-          font-weight: bold;
+          font-weight: 600;
         }
+        
         .content em, .content i {
           font-style: italic;
         }
+        
         .content p {
-          margin: 15px 0;
+          margin: 16px 0;
+          color: #4b5563;
         }
+        
+        .content a {
+          color: #6366f1;
+          text-decoration: none;
+          border-bottom: 1px solid #c7d2fe;
+          padding-bottom: 1px;
+          transition: border-color 0.2s ease;
+        }
+        
+        .content a:hover {
+          border-color: #6366f1;
+        }
+        
         .footer {
-          margin-top: 30px;
-          font-size: 12px;
-          color: #999;
-          border-top: 1px solid #ddd;
-          padding-top: 10px;
+          background: linear-gradient(to right, #eef2ff, #ede9fe, #faf5ff);
+          padding: 25px 30px;
+          font-size: 13px;
+          color: #6b7280;
+          border-top: 1px solid #f3f4f6;
+          text-align: center;
+        }
+        
+        .footer p {
+          margin: 8px 0;
+        }
+        
+        .footer a {
+          color: #6366f1;
+          text-decoration: none;
+          font-weight: 500;
+        }
+        
+        .button {
+          display: inline-block;
+          padding: 8px 16px;
+          background: linear-gradient(to right, #8b5cf6, #6366f1);
+          color: white;
+          text-decoration: none;
+          border-radius: 8px;
+          font-weight: 500;
+          font-size: 14px;
+          margin-top: 8px;
+          box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+        }
+        
+        @media only screen and (max-width: 600px) {
+          .header, .content-wrapper, .footer {
+            padding: 20px;
+          }
+          
+          .container {
+            margin: 10px;
+            border-radius: 12px;
+          }
+          
+          .title {
+            font-size: 22px;
+          }
         }
       </style>
     </head>
     <body>
-      <h1>${newsletter.title}</h1>
-      <div class="topics">Topics: ${newsletter.topics.join(', ')}</div>
-      <div class="content">
-        ${htmlContent}
-      </div>
-      <div class="footer">
-        <p>You received this newsletter because you subscribed to these topics.</p>
-        <p><a href="{{unsubscribe_link}}">Unsubscribe</a> | <a href="{{preferences_link}}">Update preferences</a></p>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1 class="title">${newsletter.title}</h1>
+            <div class="topics">
+              <span class="topics-label">Topics:</span>
+              <div>${topicBadges}</div>
+            </div>
+          </div>
+          
+          <div class="content-wrapper">
+            <div class="content">
+              ${htmlContent}
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>You received this newsletter because you subscribed to these topics.</p>
+            <p>
+              <a href="{{unsubscribe_link}}">Unsubscribe</a> &nbsp;•&nbsp; 
+              <a href="{{preferences_link}}">Update preferences</a>
+            </p>
+            <p style="margin-top: 15px; font-size: 12px; color: #9ca3af;">© ${new Date().getFullYear()} Concisely</p>
+          </div>
+        </div>
       </div>
     </body>
     </html>
