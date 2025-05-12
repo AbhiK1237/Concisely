@@ -31,7 +31,7 @@ export const generateSummary = async (
 
     switch (type) {
       case 'youtube':
-        prompt = `You're a helpful Teaching/explainer assistant.your job is to analyse the transcript,find out what kind of topic it is and Summarize the following YouTube video transcript in about ${contentLength} words.If the transcript is in some other langugage than english, make sure you understand it properly and give the response in english. Make the summary simple, clear, and easy for anyone to understand while covering all the points.If there are any formulas important rules,techiques make sure you cover them all. Focus on the main points, explain technical terms if any, and write in a friendly, engaging tone.\n\nTranscript:\n${content}`;
+        prompt = `You're a helpful Teaching/explainer assistant.your job is to analyse the Content,find out what kind of topic it is and Summarize the following YouTube video Content in about ${contentLength} words in easy to understand way.If the text is in some other langugage than english, make sure you understand it properly and give the response in english. Make the summary simple, clear, and easy for anyone to understand while covering all the points.If there are any formulas important rules,techiques make sure you cover them all. Focus on the main points, explain technical terms if any, and write in a friendly, engaging tone.\n\nTranscript:\n${content}`;
         break;
       case 'podcast':
         prompt = `Act as a friendly and concise assistant. Summarize this podcast transcript in around ${contentLength} words. Make the explanation easy to follow, simplify complex ideas, and ensure a natural, conversational tone that matches the style of a podcast listener summary.\n\nTranscript:\n${content}`;
@@ -46,7 +46,7 @@ export const generateSummary = async (
 
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: "You are a transcript summarizer assistant." },
         { role: "user", content: prompt }
@@ -84,12 +84,13 @@ export const generateNewsletter = async (
 ): Promise<string> => {
   try {
     const topicsText = topics.join(", ");
+    const system_promtpt = "You are a professional newsletter editor. You will be given a list of topics and content. Your task is to create a well-structured newsletter based on the provided summaries. The newsletter should focus on these topics. Try to make it engaging and informative, ensuring that the content flows well and is easy to read. Use a friendly tone and ensure that the newsletter is suitable for a general audience. Avoid jargon unless necessary, and provide explanations for any complex terms used.Also make sure to include a catchy title and a brief introduction that summarizes the main points of the newsletter. The newsletter should be visually appealing and easy to navigate, with clear headings and sections for each topic. Use bullet points or numbered lists where appropriate to enhance readability. ";
     const prompt = `Create a well-structured newsletter based on the following summaries. The newsletter should focus on these topics: ${topicsText}.\n\nContent to include:\n${combinedContent}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4.1-mini", // or whichever model you prefer to be consistent
       messages: [
-        { role: "system", content: "You are a professional newsletter editor." },
+        { role: "system", content: system_promtpt },
         { role: "user", content: prompt }
       ],
     });
