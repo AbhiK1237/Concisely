@@ -4,6 +4,32 @@ Concisely is an AI-powered content summarization and newsletter platform that he
 
 ![Concisely Logo](./frontend/public/logo.png)
 
+## Application Screenshots
+
+### Landing Page
+![Landing Page](./screenshots/LandingPage.png)
+*Elegant landing page introducing the Concisely platform*
+
+### Dashboard
+![Dashboard View](./screenshots/Dashboard.png)
+*Dashboard showing recent summaries and scheduled newsletters*
+
+### Content Sources
+![Content Sources](./screenshots/Sources.png)
+*Add and manage your content sources*
+
+### Newsletter View
+![Newsletter Example](./screenshots/Newsletter.png)
+*Beautiful, branded newsletters delivered to your inbox*
+
+### Topic Selection
+![Topic Selection](./screenshots/TopicSelection.png)
+*Personalize your content preferences*
+
+### Settings
+![Settings Page](./screenshots/Settings.png)
+*Customize your account and application settings*
+
 ## Features
 
 - **Multi-source Summarization**: Generate summaries from different content types:
@@ -44,8 +70,8 @@ The project is divided into two main parts:
 - Node.js with Express.js and TypeScript
 - MongoDB for data storage
 - Multi-AI integration:
-  - Gemini API for summarization
-  - OpenAI for content analysis and topic detection
+  - Gemini API and OpenAI's GPT-4.1 for summarization
+  - GPT 4.1 for content analysis and topic detection
 - Brave Search API through Model Context Protocol (MCP) for content discovery
 - Puppeteer for web scraping
 - Nodemailer for email delivery
@@ -166,13 +192,13 @@ The project is divided into two main parts:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## About the Developer
+
+Concisely was designed and developed by me (Abhik) as a passion project to solve the problem of information overload. The entire system, from frontend to backend, AI integration, and email delivery was built from scratch.
 
 ## Acknowledgments
 
-- Thanks to all contributors who have helped shape this project
 - Shadcn UI for the beautiful component patterns
 - Gemini and OpenAI for powering our AI capabilities
 - Brave Search for content discovery
