@@ -155,4 +155,30 @@ export class BraveMCPClient {
             throw error;
         }
     }
+    // Add direct search method to bypass OpenAI processing for simple queries
+    async directSearch(query: string, count: number = 10): Promise<string> {
+        if (!this.transport) {
+            throw new Error("MCP server not connected. Call connectToServer first.");
+        }
+
+        try {
+            // Direct MCP tool call without OpenAI processing
+            const result = await this.mcp.callTool({
+                name: "brave_web_search",
+                arguments: { query, count }
+            });
+
+            const typedResult = result as { content: Array<{ text: string }> };
+            return typedResult.content[0].text;
+        } catch (error) {
+            logger.error("Error in direct search:", error);
+            throw error;
+        }
+    }
+
+    // Batch search method
+    async batchSearch(queries: Array<{ query: string, count?: number }>): Promise<string[]> {
+        const promises = queries.map(({ query, count = 10 }) => this.directSearch(query, count));
+        return Promise.all(promises);
+    }
 }
