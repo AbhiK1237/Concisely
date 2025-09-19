@@ -53,7 +53,7 @@ interface EmailOptions {
 const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
     const mailOptions = {
-      from: options.from || process.env.EMAIL_FROM || 'noreply@yourdomain.com',
+      from: options.from || process.env.EMAIL_FROM || 'Concisely.com',
       to: options.to,
       subject: options.subject,
       html: options.html,
