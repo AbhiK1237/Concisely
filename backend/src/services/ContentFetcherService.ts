@@ -8,7 +8,7 @@ import { getTranscriptText } from './youtubeService';
 import { scrapeArticle } from './websiteService';
 import { OpenAI } from 'openai';
 import { BraveMCPClient } from './BraveMCPClient';
-
+import { CacheService } from './Cache';
 // Configure with your API keys in environment variables
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
@@ -20,6 +20,8 @@ export interface ContentItem {
     publishedAt: string;
     sourceType: 'article' | 'youtube' | 'podcast' | 'document';
 }
+
+
 // Initialize OpenAI client configured to use GPT-4o mini
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -511,59 +513,43 @@ export async function processContentItem(
  */
 export async function fetchAndProcessContentForUser(userId: string): Promise<any> {
     try {
-        // Get user's topics and frequency preference
         const user = await User.findById(userId);
-
         if (!user || !user.preferences.topics || user.preferences.topics.length === 0) {
             return { success: false, message: "No topics found for user" };
         }
 
-        // Get user's frequency preference (default to weekly)
         const frequency = user.preferences.deliveryFrequency || 'weekly';
-
         const maxItemsPerTopic = Math.ceil(user.preferences.maxItemsPerNewsletter / user.preferences.topics.length);
-        const requestItemsPerTopic = maxItemsPerTopic * 2; // Request more to ensure we have enough new content
+        const requestItemsPerTopic = maxItemsPerTopic * 2;
 
-        const allProcessedItems = [];
-        const failedItems = [];
+        // PARALLEL PROCESSING: Process all topics simultaneously
+        const topicPromises = user.preferences.topics.map(async (topic) => {
+            try {
+                const contentItems = await searchContentByTopic(topic, requestItemsPerTopic, frequency);
+                const newContentItems = await filterNewContent(userId, contentItems, maxItemsPerTopic);
 
-        // Process each topic
-        for (const topic of user.preferences.topics) {
-            // Search for content on this topic - pass the user's frequency preference
-            const contentItems = await searchContentByTopic(topic, requestItemsPerTopic, frequency);
+                // Process content items in parallel too
+                const itemPromises = newContentItems.map(item => processContentItem(userId, item));
+                const results = await Promise.allSettled(itemPromises);
 
-            // Filter out content that's already been processed for this user
-            const newContentItems = await filterNewContent(userId, contentItems, maxItemsPerTopic);
-
-            if (newContentItems.length === 0) {
-                logger.info(`No new content found for topic "${topic}"`);
-                continue;
+                return results
+                    .filter(result => result.status === 'fulfilled' && result.value.success)
+                    .map(result => (result as PromiseFulfilledResult<any>).value.summary);
+            } catch (error) {
+                logger.error(`Error processing topic "${topic}":`, error);
+                return [];
             }
+        });
 
-            // Process each content item
-            for (const item of newContentItems) {
-                const result = await processContentItem(userId, item);
-                if (result.success) {
-                    allProcessedItems.push(result.summary);
-                } else {
-                    failedItems.push(item.url);
-                }
-            }
-        }
-
-        if (allProcessedItems.length === 0) {
-            return {
-                success: false,
-                message: "No new content found to process. Try again later or add more topics of interest.",
-                failedItems
-            };
-        }
+        const topicResults = await Promise.allSettled(topicPromises);
+        const allProcessedItems = topicResults
+            .filter(result => result.status === 'fulfilled')
+            .flatMap(result => (result as PromiseFulfilledResult<any[]>).value);
 
         return {
             success: true,
             message: `Successfully processed ${allProcessedItems.length} new items`,
-            summaries: allProcessedItems,
-            failedItems: failedItems.length > 0 ? failedItems : undefined
+            summaries: allProcessedItems
         };
     } catch (error) {
         logger.error('Error in fetchAndProcessContentForUser:', error);
@@ -586,3 +572,52 @@ export async function shutdownBraveMCPClient() {
     }
 }
 
+
+
+export async function fetchLatestArticlesFast(topic: string, maxResults: number = 5, frequency: string = 'weekly'): Promise<ContentItem[]> {
+    try {
+        // Check cache first
+        const cachedResults = CacheService.getCachedSearch(topic, frequency);
+        if (cachedResults && cachedResults.length > 0) {
+            logger.info(`Using cached results for topic "${topic}"`);
+            return cachedResults.slice(0, maxResults);
+        }
+
+        if (!braveMCPClient) {
+            logger.error('Brave MCP Client not initialized');
+            return [];
+        }
+
+        // Generate queries once and batch them
+        const searchQueries = await generateTopicQueries(topic);
+        const daysInterval = frequencyIntervals[frequency] || 7;
+
+        const batchQueries = searchQueries.map(query => ({
+            query: `${query} after:${daysInterval}d`,
+            count: Math.min(maxResults * 2, 15) // Reduce API calls
+        }));
+
+        // Batch search execution
+        const searchResults = await braveMCPClient.batchSearch(batchQueries);
+
+        // Parse and combine results
+        let allResults: ContentItem[] = [];
+        for (const rawResult of searchResults) {
+            const items = parseBraveSearchResults(rawResult);
+            allResults = [...allResults, ...items];
+        }
+
+        // Single AI filtering call instead of multiple
+        if (allResults.length > maxResults) {
+            allResults = await filterResultsWithAI(allResults, topic, frequency);
+        }
+
+        // Cache results
+        CacheService.setCachedSearch(topic, frequency, allResults);
+
+        return allResults.slice(0, maxResults);
+    } catch (error) {
+        logger.error(`Error fetching articles for topic "${topic}":`, error);
+        return [];
+    }
+}
