@@ -1,11 +1,21 @@
 import { YoutubeTranscript } from 'youtube-transcript';
+const TranscriptAPI: any = require('youtube-transcript-api');
 import axios from 'axios';
 
 // Function to extract video ID from YouTube URL
 export const getVideoId = (url: string): string => {
+  if (!url || typeof url !== 'string') {
+    throw new Error(`Invalid YouTube URL: ${url}`);
+  }
+
   const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
   const match = url.match(regExp);
-  return (match && match[7].length === 11) ? match[7] : url;
+
+  if (!match || !match[7] || match[7].length !== 11) {
+    throw new Error(`Unable to extract video ID from URL: ${url}`);
+  }
+
+  return match[7];
 };
 
 // Get video info using YouTube oEmbed API
@@ -29,12 +39,12 @@ export const getVideoInfo = async (videoUrl: string) => {
 };
 
 // Get transcript using youtube-transcript library
-export const getTranscript = async (videoUrl: string): Promise<Array<{ text: string, duration: number, offset: number }>> => {
+export const getTranscript = async (videoUrl: string,): Promise<Array<{ text: string, duration: number, offset: number }>> => {
   try {
     const videoId = getVideoId(videoUrl);
     console.log('Fetching transcript for video ID:', videoId); // Debug log
 
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    const transcript = await TranscriptAPI.getTranscript(videoId);
 
     if (!transcript || transcript.length === 0) {
       throw new Error('No transcript available for this video');
