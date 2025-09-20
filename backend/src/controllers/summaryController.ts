@@ -18,7 +18,9 @@ interface AuthRequest extends Request {
 // Create a summary from a YouTube video
 export const createYouTubeSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+
     const { url } = req.body;
+    console.log(`Creating summary for YouTube video: ${url}`);
     const { title } = await getVideoInfo(url);
     if (!req.user) {
       res.status(401).json(apiResponse.error('Not authorized'));
